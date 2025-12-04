@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실시간 HTML 에디터</title>
+    <style>
+        /* 화면 전체를 사용하고 여백을 없앱니다 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: sans-serif;
+            overflow: hidden; /* 스크롤 방지 */
+        }
+
+        /* 왼쪽과 오른쪽을 감싸는 컨테이너 */
+        .container {
+            display: flex; /* 화면을 가로로 배치 */
+            height: 100vh; /* 화면 전체 높이 */
+        }
+
+        /* 왼쪽: 코드 입력창 */
+        #editor {
+            width: 50%;
+            height: 100%;
+            border: none;
+            background-color: #282c34; /* 어두운 테마 */
+            color: #ffffff;
+            padding: 20px;
+            font-family: 'Courier New', Courier, monospace; /* 코딩용 폰트 */
+            font-size: 16px;
+            resize: none; /* 사용자 임의 크기 조절 방지 */
+            outline: none; /* 클릭 시 테두리 제거 */
+            box-sizing: border-box; /* 패딩 포함 크기 계산 */
+        }
+
+        /* 오른쪽: 미리보기 창 */
+        #preview {
+            width: 50%;
+            height: 100%;
+            border: none;
+            background-color: #ffffff;
+            border-left: 1px solid #ccc; /* 구분선 */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <textarea id="editor" placeholder="여기에 HTML 코드를 입력하세요..."><h1>안녕하세요!</h1>
+<p>여기에 코드를 입력하면 오른쪽에 바로 나타납니다.</p>
+<button>버튼도 만들어보세요</button></textarea>
+        
+        <iframe id="preview"></iframe>
+    </div>
+
+    <script>
+        // 1. 요소 가져오기
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+
+        // 2. 업데이트 함수 정의
+        function updatePreview() {
+            // 에디터의 내용을 가져와서 아이프레임의 문서 내용(srcdoc)으로 설정
+            preview.srcdoc = editor.value;
+        }
+
+        // 3. 이벤트 리스너 등록
+        // 사용자가 키를 뗄 때마다(keyup) 또는 내용을 입력할 때마다(input) 실행
+        editor.addEventListener('input', updatePreview);
+
+        // 4. 페이지 로드 시 최초 1회 실행 (초기 내용 보여주기 위함)
+        updatePreview();
+    </script>
+</body>
+</html>
