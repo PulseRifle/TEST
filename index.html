@@ -20,7 +20,7 @@
             margin: 0;
             padding: 0;
             height: 100%;
-            overflow: hidden; /* 전체 스크롤 방지 */
+            overflow: hidden;
             font-family: 'Roboto Mono', monospace;
         }
 
@@ -30,16 +30,14 @@
             width: 100%;
         }
 
-        /* 왼쪽 패널 스타일 */
         .left-panel {
             width: 50%;
             display: flex;
             flex-direction: column;
             background-color: #282a36;
-            min-width: 0; /* Flexbox 내부 오버플로우 방지 */
+            min-width: 0;
         }
 
-        /* 툴바 스타일 */
         .toolbar {
             padding: 0 10px;
             background-color: #1e1e1e;
@@ -47,7 +45,7 @@
             gap: 8px;
             border-bottom: 1px solid #444;
             height: 50px;
-            flex-shrink: 0; /* 높이 줄어들지 않음 */
+            flex-shrink: 0;
             align-items: center;
         }
 
@@ -68,7 +66,6 @@
         .btn-save { background-color: #50fa7b; color: #282a36; }
         .btn-toggle { background-color: #8be9fd; color: #282a36; }
 
-        /* 기본 Textarea 스타일 (CodeMirror 꺼졌을 때) */
         #code-area {
             flex-grow: 1;
             width: 100%;
@@ -82,10 +79,9 @@
             font-family: 'Roboto Mono', monospace;
             font-size: 15px;
             box-sizing: border-box;
-            display: block; /* 기본적으로 표시 */
+            display: block;
         }
 
-        /* CodeMirror 스타일 덮어쓰기 */
         .CodeMirror {
             flex-grow: 1;
             height: 100% !important; 
@@ -93,7 +89,6 @@
             font-size: 15px;
         }
 
-        /* 리사이저 (PC용) */
         .resizer {
             width: 6px;
             background-color: #44475a;
@@ -112,26 +107,11 @@
         iframe { width: 100%; height: 100%; border: none; }
         .pointer-events-none { pointer-events: none; }
 
-        /* 📱 모바일 대응 (화면 폭 768px 이하) */
         @media (max-width: 768px) {
-            .container {
-                flex-direction: column; /* 세로 배치로 변경 */
-            }
-
-            .left-panel {
-                width: 100% !important; /* 강제 100% */
-                height: 50%;
-            }
-
-            .right-panel {
-                width: 100% !important;
-                height: 50%;
-            }
-
-            /* 모바일에서는 복잡성을 피하기 위해 리사이저 숨김 */
-            .resizer {
-                display: none; 
-            }
+            .container { flex-direction: column; }
+            .left-panel { width: 100% !important; height: 50%; }
+            .right-panel { width: 100% !important; height: 50%; }
+            .resizer { display: none; }
         }
     </style>
 </head>
@@ -140,17 +120,14 @@
     <div class="container">
         <div class="left-panel" id="leftPanel">
             <div class="toolbar">
-                <button class="btn-reset" onclick="resetCode()">🗑️ 초기화</button>
+                <button class="btn-reset" onclick="resetCode()">🗑️ 모두 지우기</button>
                 <button class="btn-save" onclick="saveCode()">💾 저장</button>
                 <button class="btn-toggle" onclick="toggleEditorMode()">🔄 모드 전환</button>
                 <span id="mode-label" style="color:#aaa; font-size: 11px; margin-left: auto;">CodeMirror</span>
             </div>
-            
             <textarea id="code-area" placeholder="코드를 입력하세요..."></textarea>
         </div>
-
         <div class="resizer" id="resizer"></div>
-
         <div class="right-panel" id="rightPanel">
             <iframe id="preview"></iframe>
         </div>
@@ -161,62 +138,65 @@
         const preview = document.getElementById('preview');
         const modeLabel = document.getElementById('mode-label');
         
-        // 기본 코드
+        // 처음 방문했을 때만 보여줄 기본 코드 (초기화 버튼과는 별개)
         const defaultCode = `<!DOCTYPE html>
 <html>
 <head>
 <style>
   body { font-family: sans-serif; padding: 20px; text-align: center;}
   h1 { color: #ff79c6; }
-  button { padding: 10px 20px; background: #8be9fd; border: none; cursor: pointer; }
 </style>
 </head>
 <body>
-  <h1>Hello Mobile!</h1>
-  <p>화면을 줄여보세요. 배치가 바뀝니다.</p>
-  <button>클릭!</button>
+  <h1>Hello!</h1>
+  <p>초기화 버튼을 누르면 싹 지워집니다.</p>
 </body>
 </html>`;
 
-        // 상태 변수
-        let cmEditor = null; // CodeMirror 인스턴스 저장용
+        let cmEditor = null;
 
-        // --- 1. 초기화 및 Local Storage 로드 ---
-        const savedCode = localStorage.getItem('myHtmlCode') || defaultCode;
-        textarea.value = savedCode;
-        
-        // 페이지 로드 시 CodeMirror 활성화
+        // --- 1. 초기화 (저장된 거 없으면 기본 코드) ---
+        // localStorage.getItem이 null이면 defaultCode 사용
+        const savedCode = localStorage.getItem('myHtmlCode');
+        // 주의: savedCode가 null일 때만 defaultCode 사용 (빈 문자열 "" 이면 그대로 둠)
+        const initialCode = (savedCode !== null) ? savedCode : defaultCode;
+
+        textarea.value = initialCode;
         enableCodeMirror();
-        updatePreview(savedCode);
+        updatePreview(initialCode);
 
+        // --- 2. 초기화 버튼 기능 (수정됨) ---
+        function resetCode() {
+            if(confirm("모든 내용을 지우고 빈 페이지로 만드시겠습니까?")) {
+                const emptyCode = ""; // 완전히 빈 문자열
+                
+                if (cmEditor) {
+                    cmEditor.setValue(emptyCode);
+                    cmEditor.focus(); // 바로 입력할 수 있게 포커스 이동
+                } else {
+                    textarea.value = emptyCode;
+                    textarea.focus();
+                    saveAndPreview(emptyCode);
+                }
+            }
+        }
 
-        // --- 2. 에디터 모드 전환 기능 (핵심) ---
+        // --- 나머지 기능들은 기존과 동일 ---
+
         function toggleEditorMode() {
             if (cmEditor) {
-                // CodeMirror -> Textarea (일반 모드로)
-                // 1. 현재 CM의 내용을 가져와서 Textarea에 동기화
                 textarea.value = cmEditor.getValue();
-                // 2. CM 인스턴스 파괴 (다시 textarea가 보임)
                 cmEditor.toTextArea(); 
                 cmEditor = null;
-                
-                // 3. Textarea에 이벤트 리스너 연결 (수동 입력 감지)
                 textarea.addEventListener('input', handleTextareaInput);
-                
                 modeLabel.innerText = "Textarea";
             } else {
-                // Textarea -> CodeMirror (고급 모드로)
-                // 1. Textarea 이벤트 리스너 제거 (중복 방지)
                 textarea.removeEventListener('input', handleTextareaInput);
-                
-                // 2. CodeMirror 활성화
                 enableCodeMirror();
-                
                 modeLabel.innerText = "CodeMirror";
             }
         }
 
-        // --- 3. CodeMirror 활성화 함수 ---
         function enableCodeMirror() {
             cmEditor = CodeMirror.fromTextArea(textarea, {
                 mode: "htmlmixed",
@@ -224,47 +204,27 @@
                 lineNumbers: true,
                 lineWrapping: true,
             });
-
-            // CM 내용 변경 시 실행할 함수 연결
             cmEditor.on('change', () => {
                 const currentCode = cmEditor.getValue();
-                // 원본 textarea에도 값을 넣어줘야 나중에 모드 전환 시 데이터가 유지됨
                 textarea.value = currentCode; 
                 saveAndPreview(currentCode);
             });
         }
 
-        // --- 4. 일반 Textarea 입력 핸들러 ---
         function handleTextareaInput() {
             saveAndPreview(textarea.value);
         }
 
-        // --- 5. 공통 저장 및 미리보기 함수 ---
         function saveAndPreview(code) {
             preview.srcdoc = code;
             localStorage.setItem('myHtmlCode', code);
         }
         
-        // 초기 로드 시 미리보기 실행
         function updatePreview(code) {
             preview.srcdoc = code;
         }
 
-        // --- 6. 버튼 기능들 ---
-        function resetCode() {
-            if(confirm("초기화 하시겠습니까?")) {
-                const code = defaultCode;
-                if (cmEditor) {
-                    cmEditor.setValue(code);
-                } else {
-                    textarea.value = code;
-                    saveAndPreview(code);
-                }
-            }
-        }
-
         function saveCode() {
-            // 현재 활성화된 모드에 따라 코드 가져오기
             const code = cmEditor ? cmEditor.getValue() : textarea.value;
             const blob = new Blob([code], { type: "text/html" });
             const link = document.createElement("a");
@@ -275,7 +235,7 @@
             document.body.removeChild(link);
         }
 
-        // --- 7. 리사이즈 (PC 전용) ---
+        // 리사이즈 로직
         const resizer = document.getElementById('resizer');
         const leftPanel = document.getElementById('leftPanel');
         const container = document.querySelector('.container');
@@ -289,7 +249,6 @@
 
         document.addEventListener('mousemove', (e) => {
             if (!isResizing) return;
-            // 화면 너비가 768px보다 클 때만 작동 (모바일 오작동 방지)
             if (window.innerWidth > 768) {
                 const newPercent = (e.clientX / container.offsetWidth) * 100;
                 if (newPercent > 10 && newPercent < 90) leftPanel.style.width = newPercent + '%';
@@ -301,7 +260,6 @@
             preview.classList.remove('pointer-events-none');
             document.body.style.cursor = 'default';
         });
-
     </script>
 </body>
 </html>
