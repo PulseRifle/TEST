@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML Live Editor Studio</title>
+    <title>Multi-Language Live Editor + Gemini AI</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,20 +15,21 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/matchesonscrollbar.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <!-- Languages Support -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script> <!-- Java, C++, Swift-like -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/swift/swift.min.js"></script>
     
     <!-- CodeMirror Addons -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/search.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/searchcursor.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/jump-to-line.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.js"></script>
-    
-    <!-- FIX: xml-fold is required for matchtags -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/xml-fold.min.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchtags.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/selection/active-line.js"></script>
@@ -39,9 +40,16 @@
     <!-- Prettier (Formatter) -->
     <script src="https://unpkg.com/prettier@2.8.8/standalone.js"></script>
     <script src="https://unpkg.com/prettier@2.8.8/parser-html.js"></script>
+    <script src="https://unpkg.com/prettier@2.8.8/parser-babel.js"></script> <!-- For JS/Java/Python formatting support -->
 
-    <!-- Google Fonts (Gemini-like font) -->
+    <!-- Pyodide (Python in Browser) -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- Markdown Parser for AI Response -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <style>
         body { font-family: 'Roboto', sans-serif; background-color: #1e1e1e; color: #e0e0e0; overflow: hidden; }
@@ -68,45 +76,262 @@
         .CodeMirror { height: 100%; font-family: 'Source Code Pro', monospace; font-size: 14px; line-height: 1.5; }
         .cm-s-material-darker.CodeMirror { background-color: #1e1e1e; }
         
-        /* Search Highlight */
+        /* Search Highlight Styling (High Contrast) */
+        .search-highlight {
+            background-color: #ffff00 !important; /* Bright Yellow */
+            color: #000000 !important; /* Black Text */
+            font-weight: bold;
+            border: 1px solid #eab308;
+        }
+
         .cm-searching {
             background-color: #ffff00 !important;
             color: #000 !important;
-            border-radius: 2px;
         }
+
+        /* Console Output Styling (for Python) */
+        #consoleOutput {
+            font-family: 'Source Code Pro', monospace;
+            white-space: pre-wrap;
+            color: #00ff00;
+            background-color: #000;
+            padding: 1rem;
+            height: 100%;
+            overflow-y: auto;
+            display: none; /* Hidden by default */
+        }
+
+        /* Mobile Device Frame (for iOS/Android) */
+        .mobile-wrapper {
+            display: none; /* Hidden by default */
+            height: 100%;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            overflow: hidden;
+        }
+        .mobile-device {
+            width: 300px;
+            height: 600px;
+            border: 12px solid #333;
+            border-radius: 30px;
+            background: #fff;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .mobile-notch {
+            height: 20px;
+            background: #333;
+            width: 50%;
+            margin: 0 auto;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            position: absolute;
+            top: 0;
+            left: 25%;
+            z-index: 10;
+        }
+        .mobile-screen {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            color: #333;
+            font-family: sans-serif;
+        }
+        .mobile-screen h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 10px; }
+        .mobile-screen button { 
+            width: 100%; padding: 10px; background: #007aff; color: white; border-radius: 8px; margin-top: 10px;
+        }
+
+        /* AI Chat Window - Expanded Size */
+        #aiChatContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 500px; /* Increased Width */
+            height: 700px; /* Increased Height */
+            background-color: #252526;
+            border: 1px solid #444;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        #aiChatHeader {
+            background-color: #333;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            border-bottom: 1px solid #444;
+        }
+        #aiChatMessages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #1e1e1e;
+            font-size: 15px; /* Increased Font Size */
+            line-height: 1.6;
+        }
+        #aiChatInputArea {
+            padding: 10px;
+            background-color: #252526;
+            border-top: 1px solid #444;
+            display: flex;
+            gap: 5px;
+        }
+        .ai-msg { margin-bottom: 15px; padding: 10px 14px; border-radius: 8px; max-width: 90%; word-wrap: break-word; }
+        .ai-msg.user { background-color: #0e639c; color: white; align-self: flex-end; margin-left: auto; }
+        .ai-msg.bot { background-color: #333; color: #e0e0e0; align-self: flex-start; border: 1px solid #444; width: 100%; max-width: 100%; }
+        .ai-msg.bot p { margin-bottom: 0.5rem; }
+        
+        /* Code Block Styling in Chat */
+        .ai-msg.bot pre { 
+            background: #111; 
+            padding: 0; 
+            border-radius: 4px; 
+            overflow-x: auto; 
+            margin-top: 10px; 
+            position: relative;
+            border: 1px solid #444;
+        }
+        .ai-msg.bot code { font-family: 'Source Code Pro', monospace; font-size: 13px; display: block; padding: 12px; }
+        
+        /* Code Block Header & Buttons */
+        .code-block-header {
+            display: flex;
+            justify-content: flex-end;
+            background: #2d2d2d;
+            padding: 4px 8px;
+            border-bottom: 1px solid #444;
+            gap: 8px;
+        }
+        .code-btn {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #ddd;
+            background: #444;
+            border: none;
+        }
+        .code-btn:hover { background: #555; }
+        .code-btn.apply { background: #2563eb; color: white; }
+        .code-btn.apply:hover { background: #1d4ed8; }
+
+        /* Loader */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         /* Mobile adjustments */
         @media (max-width: 768px) {
             .split { width: 100% !important; height: auto !important; }
             #main-split, #left-split, #right-split { display: flex; flex-direction: column; }
+            #aiChatContainer { width: 90%; right: 5%; bottom: 5%; height: 70%; }
         }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col">
 
     <!-- Header / Toolbar -->
-    <header class="bg-gray-800 border-b border-gray-700 p-2 flex flex-wrap items-center gap-2 justify-between shrink-0">
-        <div class="flex items-center gap-2">
-            <h1 class="text-lg font-bold text-blue-400 mr-2">HTML Studio</h1>
-            
-            <button onclick="clearEditor()" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-sm rounded shadow transition">초기화</button>
-            <button onclick="saveFile()" class="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm rounded shadow transition">저장</button>
-            <button onclick="formatCode()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded shadow transition">Prettier 정렬</button>
-            
-            <div class="h-6 w-px bg-gray-600 mx-1"></div>
-            
-            <button onclick="editor1.undo()" class="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded" title="Undo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
-            <button onclick="editor1.redo()" class="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded" title="Redo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg></button>
-        </div>
+    <header class="bg-gray-800 border-b border-gray-700 p-2 flex flex-col gap-2 shrink-0 transition-all duration-300">
+        <!-- Top Row: Controls -->
+        <div class="flex flex-wrap items-center gap-2 justify-between w-full">
+            <div class="flex items-center gap-2">
+                <h1 class="text-lg font-bold text-blue-400 mr-2">Multi-Lang Studio</h1>
+                
+                <!-- Language Selector -->
+                <select id="langSelect" onchange="changeLanguage()" class="bg-gray-700 text-white text-sm rounded px-2 py-1.5 border border-gray-600 focus:outline-none hover:bg-gray-600">
+                    <option value="html">HTML5 / JS</option>
+                    <option value="python">Python</option>
+                    <option value="ios">iOS (Swift)</option>
+                    <option value="android">Android (Kotlin)</option>
+                </select>
 
-        <div class="flex items-center gap-2 bg-gray-700 rounded px-2 py-1">
-            <input type="text" id="searchInput" placeholder="검색어 입력..." class="bg-transparent border-none text-white text-sm focus:outline-none w-32 md:w-48" onkeydown="if(event.key==='Enter') performSearch(true)">
-            <span id="searchCount" class="text-xs text-gray-400 w-12 text-center">0/0</span>
-            <button onclick="performSearch(false)" class="text-gray-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-            <button onclick="performSearch(true)" class="text-gray-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
-            <button onclick="performSearch(true)" class="ml-1 text-blue-400 hover:text-blue-300 font-bold">검색</button>
+                <!-- File Attachment Button -->
+                <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileUpload(this)">
+                <button onclick="document.getElementById('fileInput').click()" class="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded shadow transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                    파일 첨부
+                </button>
+
+                <!-- AI Helper Button -->
+                <button onclick="toggleAIChat()" class="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm rounded shadow transition flex items-center gap-1 font-bold">
+                    <span>Gemini</span>
+                </button>
+
+                <div class="h-6 w-px bg-gray-600 mx-1"></div>
+
+                <button onclick="clearEditor()" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-sm rounded shadow transition">초기화</button>
+                <button onclick="saveFile()" class="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm rounded shadow transition">저장</button>
+                <button onclick="formatCode()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded shadow transition">Prettier 정렬</button>
+                
+                <div class="h-6 w-px bg-gray-600 mx-1"></div>
+                
+                <button onclick="editor1.undo()" class="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded" title="Undo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
+                <button onclick="editor1.redo()" class="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded" title="Redo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg></button>
+            </div>
+
+            <div class="flex items-center gap-2 bg-gray-700 rounded px-2 py-1">
+                <input type="text" id="searchInput" placeholder="검색어 입력..." class="bg-transparent border-none text-white text-sm focus:outline-none w-32 md:w-48" onkeydown="if(event.key==='Enter') performSearch(true)">
+                <span id="searchCount" class="text-xs text-gray-400 w-12 text-center">0/0</span>
+                <button onclick="performSearch(false)" class="text-gray-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <button onclick="performSearch(true)" class="text-gray-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+                <button onclick="performSearch(true)" class="ml-1 text-blue-400 hover:text-blue-300 font-bold">검색</button>
+            </div>
+        </div>
+        
+        <!-- Bottom Row: Attached Files List -->
+        <div id="attachedFilesList" class="flex flex-wrap gap-2 w-full min-h-[0px] empty:hidden transition-all duration-300" style="max-height: 80px; overflow-y: auto;">
+            <!-- Files will be added here dynamically -->
         </div>
     </header>
+
+    <!-- AI Chat Window -->
+    <div id="aiChatContainer">
+        <div id="aiChatHeader">
+            <span class="font-bold text-white flex items-center gap-2">Gemini</span>
+            <button onclick="toggleAIChat()" class="text-gray-400 hover:text-white">✕</button>
+        </div>
+        
+        <!-- API Key Input Section -->
+        <div id="apiKeySection" class="p-4 bg-[#2d2d2d] border-b border-gray-700">
+            <p class="text-xs text-gray-400 mb-2">Google Gemini API 키가 필요합니다.</p>
+            <div class="flex gap-2">
+                <input type="password" id="geminiApiKey" placeholder="API Key 입력" class="flex-1 bg-gray-800 text-white text-sm px-2 py-1 rounded border border-gray-600 focus:outline-none">
+                <button onclick="saveApiKey()" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1 rounded">저장</button>
+            </div>
+        </div>
+
+        <div id="aiChatMessages" class="flex flex-col">
+            <div class="ai-msg bot">
+                안녕하세요! 코드를 작성하다가 막히는 부분이 있으면 언제든 물어보세요. 현재 작성 중인 코드를 바탕으로 답변해 드릴게요. 😊
+            </div>
+        </div>
+        
+        <div id="aiChatInputArea">
+            <textarea id="aiUserQuery" placeholder="질문을 입력하세요... (Shift+Enter 줄바꿈)" class="flex-1 bg-gray-800 text-white text-sm px-2 py-1 rounded border border-gray-600 focus:outline-none resize-none h-12"></textarea>
+            <button onclick="sendMessageToAI()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </div>
 
     <!-- Main Container -->
     <div id="main-container" class="flex-1 flex overflow-hidden">
@@ -117,7 +342,7 @@
             <!-- Pane 1: Editor -->
             <div id="pane1" class="relative flex flex-col h-full">
                 <div class="bg-gray-800 text-xs px-2 py-1 text-gray-400 font-mono border-b border-gray-700 flex justify-between">
-                    <span>EDITOR (HTML/CSS/JS)</span>
+                    <span id="editor-title">EDITOR (HTML/CSS/JS)</span>
                     <span id="cursor-pos">Line 1, Col 1</span>
                 </div>
                 <div class="flex-1 overflow-hidden relative">
@@ -145,10 +370,26 @@
             
             <!-- Pane 2: Preview -->
             <div id="pane2" class="relative flex flex-col h-full bg-white">
-                <div class="bg-gray-200 text-xs px-2 py-1 text-gray-600 font-mono border-b border-gray-300">
-                    PREVIEW
+                <div class="bg-gray-200 text-xs px-2 py-1 text-gray-600 font-mono border-b border-gray-300 flex justify-between">
+                    <span>PREVIEW / OUTPUT</span>
+                    <span id="status-indicator" class="text-xs font-bold text-gray-500">Ready</span>
                 </div>
-                <iframe id="previewFrame" class="w-full h-full border-none bg-white"></iframe>
+                
+                <!-- 1. HTML Iframe -->
+                <iframe id="previewFrame" class="w-full h-full border-none bg-white block"></iframe>
+                
+                <!-- 2. Python Console Output -->
+                <div id="consoleOutput" class="hidden"></div>
+
+                <!-- 3. Mobile Simulator (iOS/Android) -->
+                <div id="mobilePreview" class="mobile-wrapper hidden">
+                    <div class="mobile-device">
+                        <div class="mobile-notch"></div>
+                        <div class="mobile-screen" id="mobileScreenContent">
+                            <!-- App content simulated here -->
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Pane 4: Explanation -->
@@ -170,55 +411,137 @@
     <script>
         // --- 1. Initialization ---
         
-        // Define default code
-        const defaultCode = `<!DOCTYPE html>
+        // Language Default Codes
+        const templates = {
+            html: `<!DOCTYPE html>
 <html>
 <head>
     <style>
-        body { font-family: sans-serif; padding: 20px; text-align: center; }
-        .box { 
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4); 
-            color: white; 
-            padding: 40px; 
-            border-radius: 12px; 
-            margin: 20px auto;
-            width: 80%;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border: none;
-            background: #fff;
-            color: #333;
-            border-radius: 5px;
-            font-weight: bold;
-        }
+        body { font-family: sans-serif; text-align: center; padding: 50px; }
+        h1 { color: #3498db; }
+        button { padding: 10px 20px; background: #333; color: white; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
-
-    <div class="box">
-        <h1>안녕하세요!</h1>
-        <p>이곳은 실시간 HTML 에디터입니다.</p>
-        <button onclick="showAlert()">클릭해보세요</button>
-    </div>
-
-    <script>
-        function showAlert() {
-            alert('버튼이 클릭되었습니다!\\n이 코드는 왼쪽 에디터에서 수정 가능합니다.');
-        }
-    <\/script>
-
+    <h1>HTML5 Preview</h1>
+    <p>웹 코드를 실시간으로 수정해보세요.</p>
+    <button onclick="alert('Hello!')">Click Me</button>
 </body>
-</html>`;
+</html>`,
+            python: `# Python 3.10+ 환경입니다.
+# 실시간으로 실행 결과가 오른쪽 콘솔에 출력됩니다.
 
-        // Load from LocalStorage or use Default
-        let savedCode = localStorage.getItem('htmlStudioCode');
-        if (!savedCode) savedCode = defaultCode;
+def greet(name):
+    return f"Hello, {name}!"
 
-        // Initialize CodeMirror for Pane 1 (Main Editor)
+print("--- Python Execution Start ---")
+print(greet("Developer"))
+
+# 리스트 컴프리헨션 예제
+numbers = [1, 2, 3, 4, 5]
+squares = [n**2 for n in numbers]
+print(f"Squares: {squares}")
+
+import random
+print(f"Random Number: {random.randint(1, 100)}")
+`,
+            ios: `// Swift UI Preview Simulation
+// 실제 컴파일은 되지 않지만, 앱 레이아웃을 확인하세요.
+
+import SwiftUI
+
+struct ContentView: View {
+    var body: some View {
+        VStack {
+            Image(systemName: "globe")
+                .imageScale(.large)
+                .foregroundColor(.accentColor)
+            Text("Hello, iOS!")
+                .font(.title)
+                .padding()
+            
+            Button(action: {
+                print("Button tapped!")
+            }) {
+                Text("Tap Me")
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+        }
+    }
+}`,
+            android: `// Android Kotlin Preview Simulation
+// 실제 컴파일은 되지 않지만, 앱 레이아웃을 확인하세요.
+
+package com.example.myapp
+
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import android.widget.Toast
+
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        
+        val message = "Hello, Android!"
+        println(message)
+        
+        // Button Logic
+        button.setOnClickListener {
+            Toast.makeText(this, "Clicked!", Toast.LENGTH_SHORT).show()
+        }
+    }
+}`
+        };
+
+        // --- Expanded Syntax Database (UNCHANGED) ---
+        const syntaxData = {
+            // HTML / CSS / JS (Existing)
+            "default": { title: "Code Guide", desc: "코드를 선택하면 상세한 문법 설명이 여기에 표시됩니다.", usage: "마우스로 에디터의 특정 부분을 클릭하세요.", example: "" },
+            "div": { title: "<div> (Division)", desc: "웹 페이지의 섹션이나 구역을 나눌 때 사용하는 블록 레벨 컨테이너입니다.", usage: `<div class="클래스명">...</div>`, attr: ["class, id: 스타일 지정"] },
+            "h1": { title: "<h1> ~ <h6> (Heading)", desc: "문서의 제목을 정의합니다. h1이 가장 큽니다.", usage: `<h1>Title</h1>`, attr: [] },
+            "p": { title: "<p> (Paragraph)", desc: "문단(Paragraph)을 정의합니다.", usage: `<p>내용</p>`, attr: [] },
+            "button": { title: "<button>", desc: "클릭 가능한 버튼을 생성합니다.", usage: `<button>클릭</button>`, attr: ["onclick: 이벤트"] },
+            "input": { title: "<input>", desc: "사용자 입력을 받는 요소입니다.", usage: `<input type="text">`, attr: ["type, placeholder"] },
+            "img": { title: "<img>", desc: "이미지를 삽입합니다.", usage: `<img src="..." alt="...">`, attr: ["src: 경로", "alt: 설명"] },
+            "script": { title: "<script>", desc: "JS 코드를 포함합니다.", usage: `<script>...<\/script>`, attr: [] },
+            "style": { title: "<style>", desc: "CSS 스타일을 정의합니다.", usage: `<style>...</style>`, attr: [] },
+            "function": { title: "function (JS)", desc: "자바스크립트 함수 정의입니다.", usage: `function name() { ... }`, attr: [] },
+            "var": { title: "Variable (JS)", desc: "변수 선언 (var, let, const)", usage: `let x = 10;`, attr: [] },
+            
+            // Python Keys
+            "python_def": { title: "def (함수 정의)", desc: "함수(Function)를 정의할 때 사용하는 키워드입니다.", usage: "def 함수명(매개변수):\n    실행할 코드\n    return 값", attr: ["들여쓰기(Indentation) 필수", "return: 값 반환"] },
+            "python_print": { title: "print()", desc: "콘솔에 값을 출력하는 내장 함수입니다. 디버깅이나 결과 확인에 사용됩니다.", usage: "print('Hello World')\nprint(변수명)", attr: ["end: 줄바꿈 제어", "sep: 구분자 지정"] },
+            "python_import": { title: "import", desc: "외부 모듈이나 라이브러리를 현재 코드로 불러올 때 사용합니다.", usage: "import math\nfrom random import randint", attr: [] },
+            "python_if": { title: "if (조건문)", desc: "조건이 참(True)일 때 코드를 실행합니다. elif, else와 함께 사용됩니다.", usage: "if 조건:\n    실행 코드\nelse:\n    실행 코드", attr: [] },
+            "python_for": { title: "for (반복문)", desc: "리스트나 범위(range)의 요소를 순회하며 코드를 반복 실행합니다.", usage: "for i in range(10):\n    print(i)", attr: [] },
+
+            // iOS (Swift) Keys
+            "swift_struct": { title: "struct (구조체)", desc: "SwiftUI에서 View를 구성하는 기본 단위입니다. 값 타입(Value Type)입니다.", usage: "struct MyView: View {\n    var body: some View { ... }\n}", attr: ["View 프로토콜 채택 필요"] },
+            "swift_var": { title: "var (변수)", desc: "값을 변경할 수 있는 변수를 선언합니다.", usage: "var name = 'John'", attr: [] },
+            "swift_let": { title: "let (상수)", desc: "값을 변경할 수 없는 상수를 선언합니다. 안전성을 위해 권장됩니다.", usage: "let pi = 3.14", attr: [] },
+            "swift_func": { title: "func (함수)", desc: "Swift에서 함수를 정의하는 키워드입니다.", usage: "func greet(name: String) {\n    print(name)\n}", attr: [] },
+            "swift_vstack": { title: "VStack", desc: "Vertical Stack. 자식 뷰들을 세로로 나열하는 레이아웃 컨테이너입니다.", usage: "VStack {\n    Text('Hello')\n    Text('World')\n}", attr: ["alignment: 정렬", "spacing: 간격"] },
+            "swift_text": { title: "Text", desc: "화면에 텍스트를 표시하는 뷰입니다.", usage: "Text('안녕하세요').font(.title)", attr: [] },
+
+            // Android (Kotlin) Keys
+            "kotlin_fun": { title: "fun (함수)", desc: "Kotlin에서 함수를 선언할 때 사용하는 키워드입니다.", usage: "fun main() {\n    println('Hello')\n}", attr: [] },
+            "kotlin_val": { title: "val (읽기 전용 변수)", desc: "값이 변경되지 않는 변수(Immutable)를 선언합니다. Java의 final과 유사합니다.", usage: "val name = 'Android'", attr: [] },
+            "kotlin_var": { title: "var (가변 변수)", desc: "값을 나중에 변경할 수 있는 변수(Mutable)를 선언합니다.", usage: "var count = 0\ncount = 1", attr: [] },
+            "kotlin_class": { title: "class", desc: "객체를 생성하기 위한 틀(클래스)을 정의합니다.", usage: "class MainActivity : AppCompatActivity() {\n    ...\n}", attr: [] },
+            "kotlin_println": { title: "println()", desc: "로그나 콘솔에 텍스트를 출력하고 줄을 바꿉니다.", usage: "println('Debug Message')", attr: [] }
+        };
+
+        let currentLang = 'html';
+        let pyodide = null; // Pyodide instance
+        
+        // --- File Attachment Data ---
+        let attachedFiles = {}; // { filename: { url: blobUrl, content: arrayBuffer } }
+
+        // Initialize CodeMirror for Pane 1
         const editor1 = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
             mode: "htmlmixed",
             theme: "material-darker",
@@ -229,9 +552,9 @@
             autoCloseBrackets: true,
             indentUnit: 4
         });
-        editor1.setValue(savedCode);
+        editor1.setValue(templates.html);
 
-        // Initialize CodeMirror for Pane 3 (Block Editor)
+        // Initialize CodeMirror for Pane 3
         const editor3 = CodeMirror.fromTextArea(document.getElementById("blockEditor"), {
             mode: "htmlmixed",
             theme: "material-darker",
@@ -241,107 +564,271 @@
         });
 
         // Initialize Split.js
-        Split(['#left-col', '#right-col'], {
-            sizes: [50, 50],
-            minSize: 100,
-            gutterSize: 8,
-            cursor: 'col-resize'
-        });
+        Split(['#left-col', '#right-col'], { sizes: [50, 50], minSize: 100, gutterSize: 8 });
+        Split(['#pane1', '#pane3'], { sizes: [75, 25], direction: 'vertical', minSize: 60, gutterSize: 8 });
+        Split(['#pane2', '#pane4'], { sizes: [75, 25], direction: 'vertical', minSize: 60, gutterSize: 8 });
 
-        Split(['#pane1', '#pane3'], {
-            sizes: [75, 25],
-            direction: 'vertical',
-            minSize: 60,
-            gutterSize: 8,
-            cursor: 'row-resize'
-        });
+        // --- 2. Live Preview & Multi-Language Logic ---
 
-        Split(['#pane2', '#pane4'], {
-            sizes: [75, 25],
-            direction: 'vertical',
-            minSize: 60,
-            gutterSize: 8,
-            cursor: 'row-resize'
-        });
-
-        // --- 2. Live Preview & Sync Logic ---
-
-        let isTempPreview = false;
-
-        function updatePreview(customCode = null) {
-            const previewFrame = document.getElementById('previewFrame');
-            const code = customCode !== null ? customCode : editor1.getValue();
-            
-            const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
-            doc.open();
-            doc.write(code);
-            doc.close();
-
-            // Save to LocalStorage if it's the main code
-            if (customCode === null) {
-                localStorage.setItem('htmlStudioCode', code);
-                isTempPreview = false;
+        async function loadPyodideEngine() {
+            if (pyodide) return;
+            document.getElementById('status-indicator').textContent = "Loading Python...";
+            try {
+                pyodide = await loadPyodide();
+                document.getElementById('status-indicator').textContent = "Python Ready";
+                updatePreview(); 
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status-indicator').textContent = "Python Load Failed";
             }
         }
 
-        // Event Listener for Real-time Update
-        editor1.on("change", () => {
+        function changeLanguage() {
+            const select = document.getElementById('langSelect');
+            currentLang = select.value;
+            
+            // 1. Update Editor Mode & Template
+            if (currentLang === 'html') {
+                editor1.setOption("mode", "htmlmixed");
+                document.getElementById("editor-title").innerText = "EDITOR (HTML/CSS/JS)";
+                editor1.setValue(templates.html);
+            } else if (currentLang === 'python') {
+                editor1.setOption("mode", "python");
+                document.getElementById("editor-title").innerText = "EDITOR (PYTHON)";
+                editor1.setValue(templates.python);
+                loadPyodideEngine(); 
+            } else if (currentLang === 'ios') {
+                editor1.setOption("mode", "swift");
+                document.getElementById("editor-title").innerText = "EDITOR (SWIFT/iOS)";
+                editor1.setValue(templates.ios);
+            } else if (currentLang === 'android') {
+                editor1.setOption("mode", "text/x-java"); 
+                document.getElementById("editor-title").innerText = "EDITOR (KOTLIN/ANDROID)";
+                editor1.setValue(templates.android);
+            }
+
+            // 2. Update Preview Visibility
+            togglePreviewPanes();
             updatePreview();
+        }
+
+        function togglePreviewPanes() {
+            const frame = document.getElementById('previewFrame');
+            const consoleDiv = document.getElementById('consoleOutput');
+            const mobileDiv = document.getElementById('mobilePreview');
+
+            frame.style.display = 'none';
+            consoleDiv.style.display = 'none';
+            mobileDiv.style.display = 'none';
+            mobileDiv.classList.remove('flex'); 
+
+            if (currentLang === 'html') {
+                frame.style.display = 'block';
+            } else if (currentLang === 'python') {
+                consoleDiv.style.display = 'block';
+            } else {
+                mobileDiv.style.display = 'flex'; 
+            }
+        }
+
+        // --- File Upload Logic ---
+        function handleFileUpload(input) {
+            const files = input.files;
+            if (!files.length) return;
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Create Blob URL for HTML/Preview
+                    const blob = new Blob([e.target.result], {type: file.type});
+                    const url = URL.createObjectURL(blob);
+                    
+                    // Store File Info (ArrayBuffer for Python)
+                    attachedFiles[file.name] = {
+                        url: url,
+                        content: new Uint8Array(e.target.result)
+                    };
+                    
+                    updateFileListUI();
+                    
+                    // Update preview to reflect new file availability
+                    updatePreview();
+                };
+                reader.readAsArrayBuffer(file);
+            });
+            input.value = ''; // Reset input
+        }
+
+        // Helper function to force refresh editors
+        function refreshEditors() {
+            setTimeout(() => {
+                editor1.refresh();
+                editor3.refresh();
+            }, 50);
+        }
+
+        function updateFileListUI() {
+            const container = document.getElementById('attachedFilesList');
+            container.innerHTML = '';
+            
+            Object.keys(attachedFiles).forEach(filename => {
+                const badge = document.createElement('div');
+                badge.className = "bg-blue-900 text-blue-100 text-xs px-2 py-1 rounded flex items-center gap-1 border border-blue-700";
+                badge.innerHTML = `
+                    <span>📄 ${filename}</span>
+                    <button onclick="removeFile('${filename}')" class="text-blue-300 hover:text-white font-bold ml-1">×</button>
+                `;
+                container.appendChild(badge);
+            });
+            
+            // FIX: Refresh editor layout immediately and after animation
+            editor1.refresh();
+            editor3.refresh();
+            setTimeout(() => {
+                editor1.refresh();
+                editor3.refresh();
+            }, 350);
+        }
+
+        function removeFile(filename) {
+            if (attachedFiles[filename]) {
+                URL.revokeObjectURL(attachedFiles[filename].url); // Memory cleanup
+                delete attachedFiles[filename];
+                updateFileListUI();
+                updatePreview();
+                
+                // If Python, we should also remove from Pyodide FS if possible
+                if (pyodide && currentLang === 'python') {
+                    try { pyodide.FS.unlink(filename); } catch(e) {}
+                }
+            }
+        }
+
+        let isTempPreview = false;
+
+        async function updatePreview(customCode = null) {
+            let code = customCode !== null ? customCode : editor1.getValue();
+            
+            if (currentLang === 'html') {
+                // --- HTML: Inject Attached Files ---
+                // Replace "filename.ext" in src/href with Blob URL
+                // Simple regex replacement: looks for src="filename" or href="filename"
+                Object.keys(attachedFiles).forEach(filename => {
+                    const blobUrl = attachedFiles[filename].url;
+                    // Regex to safely replace filename inside quotes for src or href
+                    // Handles src="file.png", src='file.png', href="file.css" etc.
+                    const regex = new RegExp(`(src|href)=["']${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`, 'g');
+                    code = code.replace(regex, `$1="${blobUrl}"`);
+                });
+
+                const previewFrame = document.getElementById('previewFrame');
+                const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                doc.open();
+                doc.write(code);
+                doc.close();
+            } 
+            else if (currentLang === 'python') {
+                const outputDiv = document.getElementById('consoleOutput');
+                outputDiv.innerText = "Running...";
+                
+                if (!pyodide) {
+                    outputDiv.innerText = "Initializing Python Environment... (Please wait)";
+                    return;
+                }
+
+                try {
+                    // --- Python: Write Attached Files to Virtual FS ---
+                    Object.keys(attachedFiles).forEach(filename => {
+                        const content = attachedFiles[filename].content;
+                        pyodide.FS.writeFile(filename, content);
+                    });
+
+                    pyodide.setStdout({ batched: (msg) => {
+                        if(outputDiv.innerText === "Running...") outputDiv.innerText = "";
+                        outputDiv.innerText += msg + "\n";
+                    }});
+
+                    await pyodide.runPythonAsync(code);
+                } catch (err) {
+                    outputDiv.innerText = "Error:\n" + err;
+                }
+            }
+            else if (currentLang === 'ios' || currentLang === 'android') {
+                const mobileScreen = document.getElementById('mobileScreenContent');
+                const title = currentLang === 'ios' ? 'iOS App' : 'Android App';
+                const color = currentLang === 'ios' ? 'text-blue-600' : 'text-green-600';
+                
+                let displayText = "Hello World";
+                const match = code.match(/"([^"]*)"/); 
+                if (match) displayText = match[1];
+
+                mobileScreen.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-center">
+                        <div class="mb-4 text-4xl ${color}">
+                            ${currentLang === 'ios' ? '' : '🤖'}
+                        </div>
+                        <h1 class="text-xl font-bold">${title}</h1>
+                        <p class="text-gray-600 mb-4">Preview Simulation</p>
+                        
+                        <div class="bg-gray-100 p-4 rounded w-full text-left mb-4 shadow-sm border">
+                            <p class="font-bold text-xs text-gray-500 mb-1">UI Render:</p>
+                            <p class="text-lg">${displayText}</p>
+                        </div>
+
+                        <button onclick="alert('In a real app, this triggers logic!')">
+                            Simulated Button
+                        </button>
+
+                        <div class="mt-8 text-xs text-gray-400">
+                            * Native Compilation not available in browser.
+                            <br>Code syntax is valid.
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        let timeout = null;
+        editor1.on("change", () => {
+            if (currentLang === 'python') {
+                if (timeout) clearTimeout(timeout);
+                timeout = setTimeout(() => updatePreview(), 800); 
+            } else {
+                updatePreview();
+            }
         });
         
-        // Initial Preview
         updatePreview();
 
 
         // --- 3. Pane 3 & 4: Block Detection & Explanation ---
         
-        let currentBlockRange = null; // Stores {from, to} of the block in Pane 3
+        let currentBlockRange = null;
 
         editor1.on("cursorActivity", () => {
             const cursor = editor1.getCursor();
             document.getElementById('cursor-pos').textContent = `Line ${cursor.line + 1}, Col ${cursor.ch + 1}`;
-            
             detectAndShowBlock(cursor);
         });
 
         function detectAndShowBlock(cursor) {
             const token = editor1.getTokenAt(cursor);
-            const innerMode = CodeMirror.innerMode(editor1.getMode(), token.state).mode.name;
+            const modeName = editor1.getMode().name;
+            const lineContent = editor1.getLine(cursor.line).trim();
             
             let range = null;
-            let type = "unknown";
-            let keyword = "";
-
-            if (innerMode === "javascript") {
-                type = "JavaScript";
-                // 1. Try to find the enclosing function first (User Request: Show selected function)
-                range = findParentFunction(cursor);
-                if (range) {
-                    keyword = "Function";
-                } else {
-                    // 2. Fallback: Find nearest matching braces (e.g., object, if-block)
-                    range = findEnclosingBraces(cursor);
-                    keyword = range ? "Code Block" : "JavaScript";
-                }
-            } else if (innerMode === "css") {
-                type = "CSS";
-                keyword = "Style Rule";
-                range = findEnclosingBraces(cursor);
-            } else if (innerMode === "xml") {
-                type = "HTML Tag";
-                keyword = "HTML Element";
-                range = { from: {line: cursor.line, ch: 0}, to: {line: cursor.line, ch: editor1.getLine(cursor.line).length} };
-            }
-
-            // Default fallback if nothing found
-            if (!range) {
-                 range = { 
+            let type = modeName;
+            
+            if (modeName === "htmlmixed" || modeName === "xml") {
+                 range = { from: {line: cursor.line, ch: 0}, to: {line: cursor.line, ch: editor1.getLine(cursor.line).length} };
+                 type = "HTML/XML";
+            } else {
+                range = findEnclosingBraces(cursor) || { 
                     from: {line: cursor.line, ch: 0}, 
                     to: {line: cursor.line, ch: editor1.getLine(cursor.line).length} 
                 };
             }
 
-            // Only update if changed (to prevent flickering)
             if (!currentBlockRange || 
                 range.from.line !== currentBlockRange.from.line || 
                 range.to.line !== currentBlockRange.to.line) {
@@ -349,85 +836,39 @@
                 currentBlockRange = range;
                 const blockCode = editor1.getRange(range.from, range.to);
                 editor3.setValue(blockCode);
-                updateExplanation(type, keyword, blockCode);
+                
+                updateExplanation(type, blockCode, lineContent);
             }
         }
 
-        // Helper: Find parent function block by searching upwards for 'function' and downwards for closing brace
-        function findParentFunction(cursor) {
-            const doc = editor1.getDoc();
-            
-            // 1. Search Upwards for 'function' keyword
-            let startLine = -1;
-            // Search back up to 500 lines
-            for (let i = cursor.line; i >= Math.max(0, cursor.line - 500); i--) {
-                const text = doc.getLine(i);
-                if (/\bfunction\b/.test(text)) {
-                    startLine = i;
-                    break;
-                }
-            }
-            
-            if (startLine === -1) return null;
-
-            // 2. Find opening brace '{' after function keyword (on same or next lines)
-            let openBracePos = null;
-            for (let i = startLine; i < Math.min(doc.lineCount(), startLine + 20); i++) {
-                const text = doc.getLine(i);
-                const ch = text.indexOf('{');
-                if (ch !== -1) {
-                    openBracePos = { line: i, ch: ch };
-                    break;
-                }
-            }
-            
-            if (!openBracePos) return null;
-
-            // 3. Find closing brace '}' using balance counter
-            return findBalancedClosingBrace(openBracePos, startLine);
-        }
-
-        // Helper: Find simple enclosing braces (for CSS or JS non-function blocks)
         function findEnclosingBraces(cursor) {
             const doc = editor1.getDoc();
-            
-            // Search Up for '{'
             let openBracePos = null;
             for (let i = cursor.line; i >= Math.max(0, cursor.line - 500); i--) {
                 const text = doc.getLine(i);
-                // Last occurrence of '{'
-                const ch = text.lastIndexOf('{');
+                const ch = text.lastIndexOf('{'); 
                 if (ch !== -1) {
                     openBracePos = { line: i, ch: ch };
                     break;
                 }
             }
-            
             if (!openBracePos) return null;
-            
-            // Search matching '}'
             return findBalancedClosingBrace(openBracePos, openBracePos.line);
         }
 
-        // Helper: Find closing brace given an opening brace position
         function findBalancedClosingBrace(openBracePos, startLineToReturn) {
              const doc = editor1.getDoc();
              let balance = 1;
-             
              for (let i = openBracePos.line; i < doc.lineCount(); i++) {
                 let text = doc.getLine(i);
                 let startCh = (i === openBracePos.line) ? openBracePos.ch + 1 : 0;
-                
                 for (let j = startCh; j < text.length; j++) {
                     const char = text[j];
                     if (char === '{') balance++;
                     else if (char === '}') {
                         balance--;
                         if (balance === 0) {
-                            return {
-                                from: { line: startLineToReturn, ch: 0 },
-                                to: { line: i, ch: j + 1 }
-                            };
+                            return { from: { line: startLineToReturn, ch: 0 }, to: { line: i, ch: j + 1 } };
                         }
                     }
                 }
@@ -435,205 +876,72 @@
              return null;
         }
 
-        // --- Data: Syntax Guide Database ---
-        const syntaxData = {
-            "default": {
-                title: "HTML/JS 가이드",
-                desc: "코드를 선택하면 상세한 문법 설명이 여기에 표시됩니다.",
-                usage: "마우스로 에디터의 특정 부분을 클릭하세요.",
-                example: "예: <div> 태그, function 키워드 등"
-            },
-            "div": {
-                title: "<div> (Division)",
-                desc: "웹 페이지의 섹션이나 구역을 나눌 때 사용하는 블록 레벨 컨테이너입니다. 주로 CSS와 함께 사용하여 레이아웃을 구성합니다.",
-                usage: `<div class="클래스명">
-    ...내용...
-</div>`,
-                attr: ["class: 스타일 그룹 지정", "id: 고유 식별자 지정", "style: 인라인 스타일 지정"]
-            },
-            "h1": {
-                title: "<h1> ~ <h6> (Heading)",
-                desc: "문서의 제목을 정의합니다. h1이 가장 크고 중요하며 h6가 가장 작습니다. 검색 엔진 최적화(SEO)에 매우 중요합니다.",
-                usage: `<h1>메인 제목</h1>
-<h2>서브 제목</h2>`,
-                attr: ["class, id: 스타일 및 식별자"]
-            },
-            "p": {
-                title: "<p> (Paragraph)",
-                desc: "하나의 문단을 정의할 때 사용합니다. 위아래로 약간의 여백(margin)이 자동으로 생깁니다.",
-                usage: `<p>이것은 하나의 문단입니다.</p>`,
-                attr: []
-            },
-            "button": {
-                title: "<button> (버튼)",
-                desc: "사용자가 클릭할 수 있는 버튼을 생성합니다. 자바스크립트 이벤트를 트리거하거나 폼을 제출할 때 사용합니다.",
-                usage: `<button type="button" onclick="함수()">버튼명</button>`,
-                attr: ["type: button(일반), submit(제출), reset(초기화)", "onclick: 클릭 시 실행할 JS"]
-            },
-            "input": {
-                title: "<input> (입력창)",
-                desc: "사용자로부터 데이터를 입력받을 수 있는 컨트롤입니다. type 속성에 따라 모양이 크게 달라집니다.",
-                usage: `<input type="text" placeholder="입력하세요">`,
-                attr: ["type: text, password, checkbox, radio 등", "value: 초기값", "placeholder: 힌트 텍스트"]
-            },
-            "img": {
-                title: "<img> (이미지)",
-                desc: "페이지에 이미지를 삽입합니다. 닫는 태그가 없는 빈 태그입니다.",
-                usage: `<img src="이미지주소.jpg" alt="설명">`,
-                attr: ["src: 이미지 경로 (필수)", "alt: 대체 텍스트 (필수)", "width/height: 크기 조절"]
-            },
-            "a": {
-                title: "<a> (Anchor/링크)",
-                desc: "다른 페이지나 같은 페이지의 특정 위치로 이동하는 하이퍼링크를 만듭니다.",
-                usage: `<a href="https://google.com">구글로 이동</a>`,
-                attr: ["href: 이동할 주소", "target: _blank (새 창에서 열기)"]
-            },
-            "script": {
-                title: "<script> (자바스크립트)",
-                desc: "HTML 문서 내에 자바스크립트 코드를 포함하거나 외부 JS 파일을 불러올 때 사용합니다.",
-                usage: `<script>
-  console.log('실행');
-<\/script>`,
-                attr: ["src: 외부 스크립트 파일 경로"]
-            },
-            "style": {
-                title: "<style> (CSS 스타일)",
-                desc: "HTML 문서의 스타일 정보를 정의합니다. 주로 <head> 태그 안에 위치합니다.",
-                usage: `<style>
-  body { color: red; }
-</style>`,
-                attr: []
-            },
-            "function": {
-                title: "Function (함수)",
-                desc: "특정 작업을 수행하도록 설계된 코드 블록입니다. 정의해두고 필요할 때마다 호출하여 재사용할 수 있습니다.",
-                usage: `function 함수명(매개변수) {
-  // 실행할 코드
-}`,
-                attr: ["return: 값을 반환하고 함수 종료"]
-            },
-            "variable": {
-                title: "변수 선언 (var, let, const)",
-                desc: "데이터를 저장하는 공간입니다. ES6부터는 var보다 let(변경 가능)과 const(변경 불가능) 사용을 권장합니다.",
-                usage: `let name = "John"; // 변경 가능
-const pi = 3.14; // 변경 불가`,
-                attr: []
-            },
-            "return": {
-                title: "return (반환)",
-                desc: "함수의 실행을 종료하고, 주어진 값을 함수 호출 지점으로 반환합니다.",
-                usage: `return 결과값;`,
-                attr: []
-            },
-            "alert": {
-                title: "alert() (알림창)",
-                desc: "사용자에게 메시지를 보여주는 경고창을 띄웁니다. 확인을 누를 때까지 스크립트 실행이 일시 중지됩니다.",
-                usage: `alert("메시지 내용");`,
-                attr: []
-            },
-            "console.log": {
-                title: "console.log()",
-                desc: "웹 브라우저의 콘솔 탭에 메시지를 출력합니다. 디버깅(오류 확인) 용도로 가장 많이 사용됩니다.",
-                usage: `console.log("변수값:", value);`,
-                attr: []
-            },
-            "if": {
-                title: "if / else (조건문)",
-                desc: "조건의 참/거짓 여부에 따라 다른 코드를 실행하게 합니다.",
-                usage: `if (조건) {
-  // 참일 때
-} else {
-  // 거짓일 때
-}`,
-                attr: []
-            },
-            "for": {
-                title: "for (반복문)",
-                desc: "특정 코드를 정해진 횟수만큼 반복해서 실행합니다.",
-                usage: `for (let i = 0; i < 10; i++) {
-  console.log(i);
-}`,
-                attr: []
-            }
-        };
-
-
-        function updateExplanation(type, keyword, codeSnippet) {
+        function updateExplanation(type, codeSnippet, lineContent) {
             const expl = document.getElementById('explanationContent');
-            
-            // 1. Identify Key for Database
             let key = "default";
-            // Set dynamic data to null initially
             let dynamicData = null;
             
+            const lowerLine = lineContent.toLowerCase();
             const lowerCode = codeSnippet.toLowerCase();
 
-            // Simple parser to find matching syntax key
-            if (type === "HTML Tag" || type === "HTML Element") {
-                // Extract tag name like "div", "h1", "button"
+            if (currentLang === 'html') {
                 const match = lowerCode.match(/<([a-z0-9]+)/);
-                if (match && syntaxData[match[1]]) {
-                    key = match[1];
-                } else if (match) {
-                     // Generic HTML Tag fallback if not in DB
+                if (match && syntaxData[match[1]]) key = match[1];
+                else if (lowerCode.includes("function")) key = "function";
+                else if (lowerCode.includes("var") || lowerCode.includes("let") || lowerCode.includes("const")) key = "var";
+                
+            } else if (currentLang === 'python') {
+                if (lowerLine.startsWith("def ")) key = "python_def";
+                else if (lowerLine.includes("print(")) key = "python_print";
+                else if (lowerLine.startsWith("import ") || lowerLine.startsWith("from ")) key = "python_import";
+                else if (lowerLine.startsWith("if ") || lowerLine.startsWith("elif ") || lowerLine.startsWith("else:")) key = "python_if";
+                else if (lowerLine.startsWith("for ")) key = "python_for";
+                
+                if (key === "default") {
                      dynamicData = {
-                        title: `&lt;${match[1]}&gt; 태그`,
-                        desc: "HTML 문서의 구조나 요소를 정의하는 태그입니다.",
-                        usage: `<${match[1]}>...</${match[1]}>`,
-                        attr: []
-                     };
-                }
-            } else if (type === "JavaScript" || keyword === "Function" || type === "Script Logic") {
-                if (lowerCode.includes("function")) {
-                    key = "function";
-                    // Try to extract function name for better explanation
-                    // Regex looks for "function" followed by space(s) and then a name
-                    const funcNameMatch = codeSnippet.match(/function\s+([a-zA-Z0-9_$]+)/);
-                    if (funcNameMatch) {
-                        dynamicData = {
-                            title: `Function: ${funcNameMatch[1]}()`,
-                            desc: `사용자가 정의한 함수 <strong>${funcNameMatch[1]}</strong>입니다. 이 코드 블록은 <code>${funcNameMatch[1]}()</code> 형태로 호출하여 실행할 수 있습니다.`,
-                            usage: `// 함수 정의\n${funcNameMatch[0]}(...) {\n  ...\n}\n\n// 사용법\n${funcNameMatch[1]}();`,
-                            attr: ["함수 정의(Definition)", "재사용 가능한 코드 블록"]
-                        };
-                    }
-                }
-                else if (lowerCode.includes("alert")) key = "alert";
-                else if (lowerCode.includes("console.log")) key = "console.log";
-                else if (lowerCode.includes("if")) key = "if";
-                else if (lowerCode.includes("for")) key = "for";
-                else if (lowerCode.includes("return")) key = "return";
-                else if (lowerCode.includes("var") || lowerCode.includes("let") || lowerCode.includes("const")) key = "variable";
-                else {
-                    // Fallback for JS code that doesn't match specific keys
-                    dynamicData = {
-                        title: "JavaScript Code",
-                        desc: "자바스크립트 실행 코드입니다. 동작이나 로직을 처리합니다.",
+                        title: "Python Code",
+                        desc: "파이썬 실행 코드입니다. 선택된 블록을 분석합니다.",
                         usage: codeSnippet.substring(0, 50) + "...",
                         attr: []
                     };
                 }
-            } else if (type === "CSS") {
-                // CSS detection could be expanded
-                if(lowerCode.includes("style")) key = "style";
-                else {
+
+            } else if (currentLang === 'ios') {
+                if (lowerLine.includes("struct ")) key = "swift_struct";
+                else if (lowerLine.includes("var ")) key = "swift_var";
+                else if (lowerLine.includes("let ")) key = "swift_let";
+                else if (lowerLine.includes("func ")) key = "swift_func";
+                else if (lowerLine.includes("vstack")) key = "swift_vstack";
+                else if (lowerLine.includes("text(")) key = "swift_text";
+
+                 if (key === "default") {
                      dynamicData = {
-                        title: "CSS Style",
-                        desc: "요소의 디자인(색상, 크기 등)을 정의하는 스타일 코드입니다.",
+                        title: "Swift Code",
+                        desc: "iOS 앱 개발을 위한 Swift 코드입니다.",
                         usage: codeSnippet.substring(0, 50) + "...",
                         attr: []
-                     };
+                    };
                 }
-            } else if (keyword === "HTML Element") {
-                // Fallback for generic HTML
-                if(lowerCode.includes("<style")) key = "style";
-                else if(lowerCode.includes("<script")) key = "script";
+
+            } else if (currentLang === 'android') {
+                if (lowerLine.includes("fun ")) key = "kotlin_fun";
+                else if (lowerLine.includes("val ")) key = "kotlin_val";
+                else if (lowerLine.includes("var ")) key = "kotlin_var";
+                else if (lowerLine.includes("class ")) key = "kotlin_class";
+                else if (lowerLine.includes("println")) key = "kotlin_println";
+
+                 if (key === "default") {
+                     dynamicData = {
+                        title: "Kotlin Code",
+                        desc: "Android 앱 개발을 위한 Kotlin 코드입니다.",
+                        usage: codeSnippet.substring(0, 50) + "...",
+                        attr: []
+                    };
+                }
             }
 
-            // Prepare Data: Use dynamic data if available, otherwise look up static DB, otherwise default
             const data = dynamicData || syntaxData[key] || syntaxData["default"];
 
-            // 2. Render HTML
             let attrHtml = "";
             if (data.attr && data.attr.length > 0) {
                 attrHtml = `<div class="mt-3">
@@ -648,7 +956,7 @@ const pi = 3.14; // 변경 불가`,
                 <div class="space-y-4">
                     <div>
                         <h3 class="text-lg font-bold text-blue-600 flex items-center gap-2">
-                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded border border-blue-200">${type}</span>
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded border border-blue-200">${currentLang.toUpperCase()}</span>
                             ${data.title}
                         </h3>
                         <p class="text-sm text-gray-700 mt-2 leading-relaxed border-l-4 border-blue-400 pl-3 bg-blue-50 py-2 pr-2 rounded-r">
@@ -658,7 +966,7 @@ const pi = 3.14; // 변경 불가`,
 
                     <div>
                         <p class="font-bold text-xs text-gray-500 mb-1">사용법 (Syntax):</p>
-                        <pre class="bg-[#282c34] text-gray-300 p-3 rounded text-xs font-mono overflow-x-auto border border-gray-600"><code class="language-html">${escapeHtml(data.usage)}</code></pre>
+                        <pre class="bg-[#282c34] text-gray-300 p-3 rounded text-xs font-mono overflow-x-auto border border-gray-600"><code>${escapeHtml(data.usage)}</code></pre>
                     </div>
                     
                     ${attrHtml}
@@ -667,25 +975,32 @@ const pi = 3.14; // 변경 불가`,
         }
 
         function escapeHtml(text) {
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
 
-        // --- 4. Search Functionality ---
-
+        // --- 4. Search Functionality (Updated for Highlight) ---
         let searchCursor = null;
+        let searchMarks = []; // Store highlight marks
 
         function performSearch(next) {
             const query = document.getElementById('searchInput').value;
+            
+            // Clear previous marks
+            searchMarks.forEach(mark => mark.clear());
+            searchMarks = [];
+
             if (!query) return;
 
+            // 1. Highlight ALL matches first (High Contrast)
+            const cursor = editor1.getSearchCursor(query);
+            while (cursor.findNext()) {
+                const mark = editor1.markText(cursor.from(), cursor.to(), { className: "search-highlight" });
+                searchMarks.push(mark);
+            }
+
+            // 2. Navigation logic (Find Next/Prev)
             if (!searchCursor || searchCursor.query !== query) {
-                // New search
                 searchCursor = editor1.getSearchCursor(query);
                 searchCursor.query = query;
             }
@@ -693,128 +1008,332 @@ const pi = 3.14; // 변경 불가`,
             let found;
             if (next) {
                 found = searchCursor.findNext();
-                if (!found) { // Wrap around
-                    searchCursor = editor1.getSearchCursor(query);
+                if (!found) { 
+                    searchCursor = editor1.getSearchCursor(query); // Wrap
                     searchCursor.query = query;
                     found = searchCursor.findNext();
                 }
             } else {
                 found = searchCursor.findPrevious();
-                if (!found) { // Wrap around backwards
-                    searchCursor = editor1.getSearchCursor(query, {line: editor1.lineCount(), ch: 0});
+                if (!found) {
+                    searchCursor = editor1.getSearchCursor(query, {line: editor1.lineCount(), ch: 0}); // Wrap
                     searchCursor.query = query;
                     found = searchCursor.findPrevious();
                 }
             }
 
             if (found) {
+                // Select and scroll to the specific match
                 editor1.setSelection(searchCursor.from(), searchCursor.to());
                 editor1.scrollIntoView(searchCursor.from(), 200);
-                editor1.focus(); // 검색된 항목으로 포커스 이동
+                editor1.focus();
                 
-                // Count matches logic (simple version)
-                const text = editor1.getValue();
-                const regex = new RegExp(query, 'gi'); // Case insensitive
-                const matches = (text.match(regex) || []).length;
-                document.getElementById('searchCount').textContent = `1/${matches}`; // Simplified counter
+                // Show count
+                document.getElementById('searchCount').textContent = `${searchMarks.length}`;
             } else {
                 showToast("검색 결과가 없습니다.");
             }
         }
 
 
-        // --- 5. Button Actions (Clear, Save, Format, Pane 3 Actions) ---
+        // --- 5. Button Actions ---
 
         function clearEditor() {
             if(confirm("모든 코드를 삭제하시겠습니까?")) {
                 editor1.setValue("");
-                localStorage.removeItem('htmlStudioCode');
                 showToast("초기화되었습니다.");
+                refreshEditors(); // Added
             }
         }
 
         function saveFile() {
             const code = editor1.getValue();
-            const now = new Date();
-            const filename = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.html`;
-            
-            const blob = new Blob([code], {type: "text/html"});
+            const ext = currentLang === 'python' ? 'py' : (currentLang === 'html' ? 'html' : (currentLang === 'ios' ? 'swift' : 'kt'));
+            const filename = `code_${Date.now()}.${ext}`;
+            const blob = new Blob([code], {type: "text/plain"});
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
             link.download = filename;
             link.click();
-            
-            showToast(`저장완료: download 폴더 (${filename})`);
+            showToast(`저장완료: ${filename}`);
         }
 
         function formatCode() {
             try {
                 const currentCode = editor1.getValue();
-                const formatted = prettier.format(currentCode, {
-                    parser: "html",
-                    plugins: prettierPlugins,
-                    tabWidth: 4
-                });
+                let formatted = currentCode;
+                
+                if (currentLang === 'html') {
+                    formatted = prettier.format(currentCode, { parser: "html", plugins: prettierPlugins, tabWidth: 4 });
+                } else if (currentLang === 'python') {
+                    showToast("Python 정렬은 현재 지원되지 않습니다."); 
+                    return;
+                }
+                
                 editor1.setValue(formatted);
-                showToast("코드가 정렬되었습니다 (Prettier).");
+                showToast("코드가 정렬되었습니다.");
             } catch (e) {
                 showToast("코드 정렬 실패: 문법 오류를 확인하세요.");
-                console.error(e);
             }
         }
 
-        // Pane 3: Test Button (작동)
         function testBlock() {
             if (!currentBlockRange) return;
-            
             const pane3Content = editor3.getValue();
             const fullCode = editor1.getValue();
-            
-            // Construct temp code by replacing the range in memory
-            const doc = new CodeMirror.Doc(fullCode, "htmlmixed");
+            const doc = new CodeMirror.Doc(fullCode, editor1.getOption("mode"));
             doc.replaceRange(pane3Content, currentBlockRange.from, currentBlockRange.to);
             const tempCode = doc.getValue();
-            
             updatePreview(tempCode);
             isTempPreview = true;
-            showToast("미리보기에 임시 반영되었습니다. (다른 창 클릭 시 복구)");
+            showToast("미리보기에 임시 반영되었습니다.");
         }
 
-        // Pane 3: Apply Button (적용)
         function applyBlock() {
             if (!currentBlockRange) return;
-
-            if (confirm("3번창의 내용을 원본 코드에 적용하시겠습니까?")) {
+            if (confirm("원본 코드에 적용하시겠습니까?")) {
                 const newContent = editor3.getValue();
                 editor1.replaceRange(newContent, currentBlockRange.from, currentBlockRange.to);
-                // Update selection to match new length
-                // (Optional: Recalculate range if we wanted to keep selection)
                 showToast("적용되었습니다.");
             }
         }
 
-        // --- Utils ---
         function showToast(msg) {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
             toast.classList.remove('translate-y-20');
-            
-            setTimeout(() => {
-                toast.classList.add('translate-y-20');
-            }, 3000);
+            setTimeout(() => { toast.classList.add('translate-y-20'); }, 3000);
         }
 
-        // Global Click Listener for Reverting Preview
         document.addEventListener('mousedown', (e) => {
             if (isTempPreview) {
                 const pane3 = document.getElementById('pane3');
-                // 3번창(버튼 포함) 외부를 클릭했을 때만 복구
                 if (pane3 && !pane3.contains(e.target)) {
-                    updatePreview(); // 인자 없이 호출하여 editor1의 내용으로 원복
+                    updatePreview();
                     showToast("미리보기가 원본으로 복구되었습니다.");
                 }
             }
         });
+
+        // Window resize listener to refresh editors
+        window.addEventListener('resize', refreshEditors);
+
+        // --- 6. AI Assistant Functions ---
+        
+        function toggleAIChat() {
+            const chat = document.getElementById('aiChatContainer');
+            if (chat.style.display === 'flex') {
+                chat.style.display = 'none';
+            } else {
+                chat.style.display = 'flex';
+                // Load API Key if exists
+                const savedKey = localStorage.getItem('gemini_api_key');
+                if (savedKey) {
+                    document.getElementById('geminiApiKey').value = savedKey;
+                    document.getElementById('apiKeySection').style.display = 'none'; // Hide if key exists
+                }
+            }
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('geminiApiKey').value.trim();
+            if (key) {
+                localStorage.setItem('gemini_api_key', key);
+                document.getElementById('apiKeySection').style.display = 'none';
+                showToast("API Key가 저장되었습니다.");
+            } else {
+                showToast("API Key를 입력해주세요.");
+            }
+        }
+
+        async function sendMessageToAI() {
+            const inputField = document.getElementById('aiUserQuery');
+            const userQuery = inputField.value.trim();
+            const apiKey = localStorage.getItem('gemini_api_key');
+
+            if (!userQuery) return;
+            if (!apiKey) {
+                alert("Gemini API 키를 먼저 입력해주세요.");
+                document.getElementById('apiKeySection').style.display = 'block';
+                return;
+            }
+
+            // UI Update: Add User Message
+            addMessageToChat(userQuery, 'user');
+            inputField.value = '';
+
+            // Show Loading
+            const loadingId = addMessageToChat('<div class="loader"></div>', 'bot');
+
+            // Prepare Prompt
+            const currentCode = editor1.getValue();
+            const systemPrompt = `You are an expert coding assistant. The user is writing code in ${currentLang.toUpperCase()}. 
+            Current Code:
+            \`\`\`${currentLang}
+            ${currentCode}
+            \`\`\`
+            User Query: ${userQuery}
+            
+            Please provide concise advice or corrected code. If you provide code, wrap it in markdown code blocks.`;
+
+            // Call API
+            try {
+                // 모델명 업데이트: gemini-2.5-flash (사용자 요청 모델 적용)
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: systemPrompt }] }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Remove Loader
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
+
+                // Error Handling Improvements
+                if (!response.ok) {
+                    let errorMsg = "API 호출 오류";
+                    if (data.error && data.error.message) {
+                        errorMsg += `: ${data.error.message}`;
+                    } else {
+                        errorMsg += ` (${response.status})`;
+                    }
+                    addMessageToChat(errorMsg, 'bot');
+                    console.error("Gemini API Error:", data);
+                    return;
+                }
+
+                if (data.candidates && data.candidates[0].content) {
+                    const aiText = data.candidates[0].content.parts[0].text;
+                    const msgId = addMessageToChat(marked.parse(aiText), 'bot');
+                    
+                    // Add Copy/Apply buttons to code blocks
+                    const msgDiv = document.getElementById(msgId);
+                    if (msgDiv) addCodeButtons(msgDiv);
+                    
+                } else if (data.promptFeedback && data.promptFeedback.blockReason) {
+                    addMessageToChat(`안전 정책에 의해 차단되었습니다. 이유: ${data.promptFeedback.blockReason}`, 'bot');
+                } else {
+                    addMessageToChat("응답을 생성할 수 없습니다. (응답 없음)", 'bot');
+                    console.error(data);
+                }
+
+            } catch (error) {
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
+                addMessageToChat(`네트워크 오류가 발생했습니다: ${error.message}`, 'bot');
+                console.error(error);
+            }
+        }
+
+        function addMessageToChat(htmlContent, sender) {
+            const container = document.getElementById('aiChatMessages');
+            const msgDiv = document.createElement('div');
+            const id = 'msg-' + Date.now();
+            msgDiv.id = id;
+            msgDiv.className = `ai-msg ${sender}`;
+            msgDiv.innerHTML = htmlContent;
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+            return id;
+        }
+        
+        // Add Copy and Apply buttons to code blocks in AI messages
+        function addCodeButtons(msgDiv) {
+            const preTags = msgDiv.querySelectorAll('pre');
+            preTags.forEach(pre => {
+                // Check if already processed
+                if (pre.querySelector('.code-block-header')) return;
+                
+                // Extract raw code
+                const code = pre.querySelector('code') ? pre.querySelector('code').innerText : pre.innerText;
+                
+                // Create header
+                const header = document.createElement('div');
+                header.className = 'code-block-header';
+                
+                // Copy Button
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'code-btn';
+                copyBtn.textContent = '복사';
+                copyBtn.onclick = () => copyCode(code);
+                
+                // Apply Button
+                const applyBtn = document.createElement('button');
+                applyBtn.className = 'code-btn apply';
+                applyBtn.textContent = '적용';
+                applyBtn.onclick = () => applyCode(code);
+                
+                header.appendChild(copyBtn);
+                header.appendChild(applyBtn);
+                
+                // Insert header before code content
+                pre.insertBefore(header, pre.firstChild);
+            });
+        }
+        
+        function copyCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                showToast("코드가 복사되었습니다.");
+            }).catch(err => {
+                showToast("복사 실패: " + err);
+            });
+        }
+        
+        function applyCode(code) {
+            if (confirm("현재 에디터의 내용을 이 코드로 덮어쓰시겠습니까?")) {
+                editor1.setValue(code);
+                showToast("코드가 적용되었습니다.");
+            }
+        }
+
+        // Enable Enter to send
+        document.getElementById('aiUserQuery').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessageToAI();
+            }
+        });
+
+        // Draggable Chat Window
+        const chatHeader = document.getElementById('aiChatHeader');
+        const chatContainer = document.getElementById('aiChatContainer');
+        let isDragging = false;
+        let currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
+
+        chatHeader.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+            if (e.target === chatHeader || e.target.parentNode === chatHeader) {
+                isDragging = true;
+            }
+        }
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+                setTranslate(currentX, currentY, chatContainer);
+            }
+        }
+        function setTranslate(xPos, yPos, el) {
+            el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+        }
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+
     </script>
 </body>
 </html>
