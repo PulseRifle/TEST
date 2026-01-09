@@ -3,262 +3,817 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>반응형 하이브리드 에디터</title>
+    <title>HTML Live Editor Studio</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/dracula.min.css">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/htmlmixed/htmlmixed.min.js"></script>
+    <!-- CodeMirror 5 (Editor Library) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material-darker.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/matchesonscrollbar.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+    
+    <!-- CodeMirror Addons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/search.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/searchcursor.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/jump-to-line.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.js"></script>
+    
+    <!-- FIX: xml-fold is required for matchtags -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/xml-fold.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchtags.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/selection/active-line.js"></script>
+
+    <!-- Split.js (Resizable Panes) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.5/split.min.js"></script>
+    
+    <!-- Prettier (Formatter) -->
+    <script src="https://unpkg.com/prettier@2.8.8/standalone.js"></script>
+    <script src="https://unpkg.com/prettier@2.8.8/parser-html.js"></script>
+
+    <!-- Google Fonts (Gemini-like font) -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
 
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Roboto Mono', monospace;
+        body { font-family: 'Roboto', sans-serif; background-color: #1e1e1e; color: #e0e0e0; overflow: hidden; }
+        .code-font { font-family: 'Source Code Pro', monospace; }
+        
+        /* Layout & Split.js Handles */
+        .gutter {
+            background-color: #333;
+            background-repeat: no-repeat;
+            background-position: 50%;
+            transition: background-color 0.2s;
         }
+        .gutter:hover { background-color: #4a9eff; }
+        .gutter.gutter-horizontal { cursor: col-resize; }
+        .gutter.gutter-vertical { cursor: row-resize; }
 
-        .container {
-            display: flex;
-            height: 100vh;
-            width: 100%;
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
+
+        /* CodeMirror Customization */
+        .CodeMirror { height: 100%; font-family: 'Source Code Pro', monospace; font-size: 14px; line-height: 1.5; }
+        .cm-s-material-darker.CodeMirror { background-color: #1e1e1e; }
+        
+        /* Search Highlight */
+        .cm-searching {
+            background-color: #ffff00 !important;
+            color: #000 !important;
+            border-radius: 2px;
         }
-
-        .left-panel {
-            width: 50%;
-            display: flex;
-            flex-direction: column;
-            background-color: #282a36;
-            min-width: 0;
+        
+        /* Mobile adjustments */
+        @media (max-width: 768px) {
+            .split { width: 100% !important; height: auto !important; }
+            #main-split, #left-split, #right-split { display: flex; flex-direction: column; }
         }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col">
 
-        .toolbar {
-            padding: 0 10px;
-            background-color: #1e1e1e;
-            display: flex;
-            gap: 8px;
-            border-bottom: 1px solid #444;
-            height: 50px;
-            flex-shrink: 0;
-            align-items: center;
+    <!-- Header / Toolbar -->
+    <header class="bg-gray-800 border-b border-gray-700 p-2 flex flex-wrap items-center gap-2 justify-between shrink-0">
+        <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold text-blue-400 mr-2">HTML Studio</h1>
+            
+            <button onclick="clearEditor()" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-sm rounded shadow transition">초기화</button>
+            <button onclick="saveFile()" class="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm rounded shadow transition">저장</button>
+            <button onclick="formatCode()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded shadow transition">Prettier 정렬</button>
+            
+            <div class="h-6 w-px bg-gray-600 mx-1"></div>
+            
+            <button onclick="editor1.undo()" class="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded" title="Undo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
+            <button onclick="editor1.redo()" class="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded" title="Redo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg></button>
+        </div>
+
+        <div class="flex items-center gap-2 bg-gray-700 rounded px-2 py-1">
+            <input type="text" id="searchInput" placeholder="검색어 입력..." class="bg-transparent border-none text-white text-sm focus:outline-none w-32 md:w-48" onkeydown="if(event.key==='Enter') performSearch(true)">
+            <span id="searchCount" class="text-xs text-gray-400 w-12 text-center">0/0</span>
+            <button onclick="performSearch(false)" class="text-gray-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+            <button onclick="performSearch(true)" class="text-gray-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+            <button onclick="performSearch(true)" class="ml-1 text-blue-400 hover:text-blue-300 font-bold">검색</button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div id="main-container" class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Column -->
+        <div id="left-col" class="flex flex-col h-full bg-[#1e1e1e]">
+            
+            <!-- Pane 1: Editor -->
+            <div id="pane1" class="relative flex flex-col h-full">
+                <div class="bg-gray-800 text-xs px-2 py-1 text-gray-400 font-mono border-b border-gray-700 flex justify-between">
+                    <span>EDITOR (HTML/CSS/JS)</span>
+                    <span id="cursor-pos">Line 1, Col 1</span>
+                </div>
+                <div class="flex-1 overflow-hidden relative">
+                    <textarea id="codeEditor"></textarea>
+                </div>
+            </div>
+
+            <!-- Pane 3: Block Editor -->
+            <div id="pane3" class="relative flex flex-col h-full bg-[#252526] border-t border-gray-700">
+                <div class="bg-gray-800 text-xs px-2 py-1 text-gray-400 font-mono border-b border-gray-700 flex justify-between items-center">
+                    <span>SELECTED BLOCK EDITOR</span>
+                    <div class="flex gap-2">
+                        <button onclick="testBlock()" class="bg-yellow-600 hover:bg-yellow-500 text-white px-2 rounded text-[10px]">작동 (테스트)</button>
+                        <button onclick="applyBlock()" class="bg-blue-600 hover:bg-blue-500 text-white px-2 rounded text-[10px]">적용 (저장)</button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-hidden">
+                    <textarea id="blockEditor"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div id="right-col" class="flex flex-col h-full bg-white">
+            
+            <!-- Pane 2: Preview -->
+            <div id="pane2" class="relative flex flex-col h-full bg-white">
+                <div class="bg-gray-200 text-xs px-2 py-1 text-gray-600 font-mono border-b border-gray-300">
+                    PREVIEW
+                </div>
+                <iframe id="previewFrame" class="w-full h-full border-none bg-white"></iframe>
+            </div>
+
+            <!-- Pane 4: Explanation -->
+            <div id="pane4" class="relative flex flex-col h-full bg-gray-50 border-t border-gray-300">
+                <div class="bg-gray-200 text-xs px-2 py-1 text-gray-600 font-mono border-b border-gray-300">
+                    SYNTAX GUIDE
+                </div>
+                <div id="explanationContent" class="p-4 text-sm text-gray-800 overflow-y-auto leading-relaxed">
+                    에디터에서 코드를 선택하면 관련 문법 설명이 여기에 표시됩니다.
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg transform translate-y-20 transition-transform duration-300 z-50"></div>
+
+    <script>
+        // --- 1. Initialization ---
+        
+        // Define default code
+        const defaultCode = `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; padding: 20px; text-align: center; }
+        .box { 
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4); 
+            color: white; 
+            padding: 40px; 
+            border-radius: 12px; 
+            margin: 20px auto;
+            width: 80%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-
         button {
-            padding: 6px 10px;
+            padding: 10px 20px;
+            font-size: 16px;
             cursor: pointer;
             border: none;
-            border-radius: 4px;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 12px;
+            background: #fff;
+            color: #333;
+            border-radius: 5px;
             font-weight: bold;
-            color: white;
-            transition: opacity 0.2s;
-        }
-        button:hover { opacity: 0.8; }
-
-        .btn-reset { background-color: #ff5555; }
-        .btn-save { background-color: #50fa7b; color: #282a36; }
-        .btn-toggle { background-color: #8be9fd; color: #282a36; }
-
-        #code-area {
-            flex-grow: 1;
-            width: 100%;
-            height: 100%;
-            background-color: #282a36;
-            color: #f8f8f2;
-            border: none;
-            padding: 10px;
-            resize: none;
-            outline: none;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 15px;
-            box-sizing: border-box;
-            display: block;
-        }
-
-        .CodeMirror {
-            flex-grow: 1;
-            height: 100% !important; 
-            font-family: 'Roboto Mono', monospace;
-            font-size: 15px;
-        }
-
-        .resizer {
-            width: 6px;
-            background-color: #44475a;
-            cursor: col-resize;
-            z-index: 10;
-            flex-shrink: 0;
-        }
-
-        .right-panel {
-            flex-grow: 1;
-            background-color: white;
-            position: relative;
-            min-width: 0;
-        }
-
-        iframe { width: 100%; height: 100%; border: none; }
-        .pointer-events-none { pointer-events: none; }
-
-        @media (max-width: 768px) {
-            .container { flex-direction: column; }
-            .left-panel { width: 100% !important; height: 50%; }
-            .right-panel { width: 100% !important; height: 50%; }
-            .resizer { display: none; }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="left-panel" id="leftPanel">
-            <div class="toolbar">
-                <button class="btn-reset" onclick="resetCode()">🗑️ 모두 지우기</button>
-                <button class="btn-save" onclick="saveCode()">💾 저장</button>
-                <button class="btn-toggle" onclick="toggleEditorMode()">🔄 모드 전환</button>
-                <span id="mode-label" style="color:#aaa; font-size: 11px; margin-left: auto;">CodeMirror</span>
-            </div>
-            <textarea id="code-area" placeholder="코드를 입력하세요..."></textarea>
-        </div>
-        <div class="resizer" id="resizer"></div>
-        <div class="right-panel" id="rightPanel">
-            <iframe id="preview"></iframe>
-        </div>
+    <div class="box">
+        <h1>안녕하세요!</h1>
+        <p>이곳은 실시간 HTML 에디터입니다.</p>
+        <button onclick="showAlert()">클릭해보세요</button>
     </div>
 
     <script>
-        const textarea = document.getElementById('code-area');
-        const preview = document.getElementById('preview');
-        const modeLabel = document.getElementById('mode-label');
-        
-        // 처음 방문했을 때만 보여줄 기본 코드 (초기화 버튼과는 별개)
-        const defaultCode = `<!DOCTYPE html>
-<html>
-<head>
-<style>
-  body { font-family: sans-serif; padding: 20px; text-align: center;}
-  h1 { color: #ff79c6; }
-</style>
-</head>
-<body>
-  <h1>Hello!</h1>
-  <p>초기화 버튼을 누르면 싹 지워집니다.</p>
+        function showAlert() {
+            alert('버튼이 클릭되었습니다!\\n이 코드는 왼쪽 에디터에서 수정 가능합니다.');
+        }
+    <\/script>
+
 </body>
 </html>`;
 
-        let cmEditor = null;
+        // Load from LocalStorage or use Default
+        let savedCode = localStorage.getItem('htmlStudioCode');
+        if (!savedCode) savedCode = defaultCode;
 
-        // --- 1. 초기화 (저장된 거 없으면 기본 코드) ---
-        // localStorage.getItem이 null이면 defaultCode 사용
-        const savedCode = localStorage.getItem('myHtmlCode');
-        // 주의: savedCode가 null일 때만 defaultCode 사용 (빈 문자열 "" 이면 그대로 둠)
-        const initialCode = (savedCode !== null) ? savedCode : defaultCode;
+        // Initialize CodeMirror for Pane 1 (Main Editor)
+        const editor1 = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
+            mode: "htmlmixed",
+            theme: "material-darker",
+            lineNumbers: true,
+            lineWrapping: true,
+            styleActiveLine: true,
+            matchTags: {bothTags: true},
+            autoCloseBrackets: true,
+            indentUnit: 4
+        });
+        editor1.setValue(savedCode);
 
-        textarea.value = initialCode;
-        enableCodeMirror();
-        updatePreview(initialCode);
+        // Initialize CodeMirror for Pane 3 (Block Editor)
+        const editor3 = CodeMirror.fromTextArea(document.getElementById("blockEditor"), {
+            mode: "htmlmixed",
+            theme: "material-darker",
+            lineNumbers: true,
+            lineWrapping: true,
+            indentUnit: 4
+        });
 
-        // --- 2. 초기화 버튼 기능 (수정됨) ---
-        function resetCode() {
-            if(confirm("모든 내용을 지우고 빈 페이지로 만드시겠습니까?")) {
-                const emptyCode = ""; // 완전히 빈 문자열
-                
-                if (cmEditor) {
-                    cmEditor.setValue(emptyCode);
-                    cmEditor.focus(); // 바로 입력할 수 있게 포커스 이동
+        // Initialize Split.js
+        Split(['#left-col', '#right-col'], {
+            sizes: [50, 50],
+            minSize: 100,
+            gutterSize: 8,
+            cursor: 'col-resize'
+        });
+
+        Split(['#pane1', '#pane3'], {
+            sizes: [75, 25],
+            direction: 'vertical',
+            minSize: 60,
+            gutterSize: 8,
+            cursor: 'row-resize'
+        });
+
+        Split(['#pane2', '#pane4'], {
+            sizes: [75, 25],
+            direction: 'vertical',
+            minSize: 60,
+            gutterSize: 8,
+            cursor: 'row-resize'
+        });
+
+        // --- 2. Live Preview & Sync Logic ---
+
+        let isTempPreview = false;
+
+        function updatePreview(customCode = null) {
+            const previewFrame = document.getElementById('previewFrame');
+            const code = customCode !== null ? customCode : editor1.getValue();
+            
+            const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            doc.open();
+            doc.write(code);
+            doc.close();
+
+            // Save to LocalStorage if it's the main code
+            if (customCode === null) {
+                localStorage.setItem('htmlStudioCode', code);
+                isTempPreview = false;
+            }
+        }
+
+        // Event Listener for Real-time Update
+        editor1.on("change", () => {
+            updatePreview();
+        });
+        
+        // Initial Preview
+        updatePreview();
+
+
+        // --- 3. Pane 3 & 4: Block Detection & Explanation ---
+        
+        let currentBlockRange = null; // Stores {from, to} of the block in Pane 3
+
+        editor1.on("cursorActivity", () => {
+            const cursor = editor1.getCursor();
+            document.getElementById('cursor-pos').textContent = `Line ${cursor.line + 1}, Col ${cursor.ch + 1}`;
+            
+            detectAndShowBlock(cursor);
+        });
+
+        function detectAndShowBlock(cursor) {
+            const token = editor1.getTokenAt(cursor);
+            const innerMode = CodeMirror.innerMode(editor1.getMode(), token.state).mode.name;
+            
+            let range = null;
+            let type = "unknown";
+            let keyword = "";
+
+            if (innerMode === "javascript") {
+                type = "JavaScript";
+                // 1. Try to find the enclosing function first (User Request: Show selected function)
+                range = findParentFunction(cursor);
+                if (range) {
+                    keyword = "Function";
                 } else {
-                    textarea.value = emptyCode;
-                    textarea.focus();
-                    saveAndPreview(emptyCode);
+                    // 2. Fallback: Find nearest matching braces (e.g., object, if-block)
+                    range = findEnclosingBraces(cursor);
+                    keyword = range ? "Code Block" : "JavaScript";
+                }
+            } else if (innerMode === "css") {
+                type = "CSS";
+                keyword = "Style Rule";
+                range = findEnclosingBraces(cursor);
+            } else if (innerMode === "xml") {
+                type = "HTML Tag";
+                keyword = "HTML Element";
+                range = { from: {line: cursor.line, ch: 0}, to: {line: cursor.line, ch: editor1.getLine(cursor.line).length} };
+            }
+
+            // Default fallback if nothing found
+            if (!range) {
+                 range = { 
+                    from: {line: cursor.line, ch: 0}, 
+                    to: {line: cursor.line, ch: editor1.getLine(cursor.line).length} 
+                };
+            }
+
+            // Only update if changed (to prevent flickering)
+            if (!currentBlockRange || 
+                range.from.line !== currentBlockRange.from.line || 
+                range.to.line !== currentBlockRange.to.line) {
+                
+                currentBlockRange = range;
+                const blockCode = editor1.getRange(range.from, range.to);
+                editor3.setValue(blockCode);
+                updateExplanation(type, keyword, blockCode);
+            }
+        }
+
+        // Helper: Find parent function block by searching upwards for 'function' and downwards for closing brace
+        function findParentFunction(cursor) {
+            const doc = editor1.getDoc();
+            
+            // 1. Search Upwards for 'function' keyword
+            let startLine = -1;
+            // Search back up to 500 lines
+            for (let i = cursor.line; i >= Math.max(0, cursor.line - 500); i--) {
+                const text = doc.getLine(i);
+                if (/\bfunction\b/.test(text)) {
+                    startLine = i;
+                    break;
                 }
             }
+            
+            if (startLine === -1) return null;
+
+            // 2. Find opening brace '{' after function keyword (on same or next lines)
+            let openBracePos = null;
+            for (let i = startLine; i < Math.min(doc.lineCount(), startLine + 20); i++) {
+                const text = doc.getLine(i);
+                const ch = text.indexOf('{');
+                if (ch !== -1) {
+                    openBracePos = { line: i, ch: ch };
+                    break;
+                }
+            }
+            
+            if (!openBracePos) return null;
+
+            // 3. Find closing brace '}' using balance counter
+            return findBalancedClosingBrace(openBracePos, startLine);
         }
 
-        // --- 나머지 기능들은 기존과 동일 ---
+        // Helper: Find simple enclosing braces (for CSS or JS non-function blocks)
+        function findEnclosingBraces(cursor) {
+            const doc = editor1.getDoc();
+            
+            // Search Up for '{'
+            let openBracePos = null;
+            for (let i = cursor.line; i >= Math.max(0, cursor.line - 500); i--) {
+                const text = doc.getLine(i);
+                // Last occurrence of '{'
+                const ch = text.lastIndexOf('{');
+                if (ch !== -1) {
+                    openBracePos = { line: i, ch: ch };
+                    break;
+                }
+            }
+            
+            if (!openBracePos) return null;
+            
+            // Search matching '}'
+            return findBalancedClosingBrace(openBracePos, openBracePos.line);
+        }
 
-        function toggleEditorMode() {
-            if (cmEditor) {
-                textarea.value = cmEditor.getValue();
-                cmEditor.toTextArea(); 
-                cmEditor = null;
-                textarea.addEventListener('input', handleTextareaInput);
-                modeLabel.innerText = "Textarea";
+        // Helper: Find closing brace given an opening brace position
+        function findBalancedClosingBrace(openBracePos, startLineToReturn) {
+             const doc = editor1.getDoc();
+             let balance = 1;
+             
+             for (let i = openBracePos.line; i < doc.lineCount(); i++) {
+                let text = doc.getLine(i);
+                let startCh = (i === openBracePos.line) ? openBracePos.ch + 1 : 0;
+                
+                for (let j = startCh; j < text.length; j++) {
+                    const char = text[j];
+                    if (char === '{') balance++;
+                    else if (char === '}') {
+                        balance--;
+                        if (balance === 0) {
+                            return {
+                                from: { line: startLineToReturn, ch: 0 },
+                                to: { line: i, ch: j + 1 }
+                            };
+                        }
+                    }
+                }
+             }
+             return null;
+        }
+
+        // --- Data: Syntax Guide Database ---
+        const syntaxData = {
+            "default": {
+                title: "HTML/JS 가이드",
+                desc: "코드를 선택하면 상세한 문법 설명이 여기에 표시됩니다.",
+                usage: "마우스로 에디터의 특정 부분을 클릭하세요.",
+                example: "예: <div> 태그, function 키워드 등"
+            },
+            "div": {
+                title: "<div> (Division)",
+                desc: "웹 페이지의 섹션이나 구역을 나눌 때 사용하는 블록 레벨 컨테이너입니다. 주로 CSS와 함께 사용하여 레이아웃을 구성합니다.",
+                usage: `<div class="클래스명">
+    ...내용...
+</div>`,
+                attr: ["class: 스타일 그룹 지정", "id: 고유 식별자 지정", "style: 인라인 스타일 지정"]
+            },
+            "h1": {
+                title: "<h1> ~ <h6> (Heading)",
+                desc: "문서의 제목을 정의합니다. h1이 가장 크고 중요하며 h6가 가장 작습니다. 검색 엔진 최적화(SEO)에 매우 중요합니다.",
+                usage: `<h1>메인 제목</h1>
+<h2>서브 제목</h2>`,
+                attr: ["class, id: 스타일 및 식별자"]
+            },
+            "p": {
+                title: "<p> (Paragraph)",
+                desc: "하나의 문단을 정의할 때 사용합니다. 위아래로 약간의 여백(margin)이 자동으로 생깁니다.",
+                usage: `<p>이것은 하나의 문단입니다.</p>`,
+                attr: []
+            },
+            "button": {
+                title: "<button> (버튼)",
+                desc: "사용자가 클릭할 수 있는 버튼을 생성합니다. 자바스크립트 이벤트를 트리거하거나 폼을 제출할 때 사용합니다.",
+                usage: `<button type="button" onclick="함수()">버튼명</button>`,
+                attr: ["type: button(일반), submit(제출), reset(초기화)", "onclick: 클릭 시 실행할 JS"]
+            },
+            "input": {
+                title: "<input> (입력창)",
+                desc: "사용자로부터 데이터를 입력받을 수 있는 컨트롤입니다. type 속성에 따라 모양이 크게 달라집니다.",
+                usage: `<input type="text" placeholder="입력하세요">`,
+                attr: ["type: text, password, checkbox, radio 등", "value: 초기값", "placeholder: 힌트 텍스트"]
+            },
+            "img": {
+                title: "<img> (이미지)",
+                desc: "페이지에 이미지를 삽입합니다. 닫는 태그가 없는 빈 태그입니다.",
+                usage: `<img src="이미지주소.jpg" alt="설명">`,
+                attr: ["src: 이미지 경로 (필수)", "alt: 대체 텍스트 (필수)", "width/height: 크기 조절"]
+            },
+            "a": {
+                title: "<a> (Anchor/링크)",
+                desc: "다른 페이지나 같은 페이지의 특정 위치로 이동하는 하이퍼링크를 만듭니다.",
+                usage: `<a href="https://google.com">구글로 이동</a>`,
+                attr: ["href: 이동할 주소", "target: _blank (새 창에서 열기)"]
+            },
+            "script": {
+                title: "<script> (자바스크립트)",
+                desc: "HTML 문서 내에 자바스크립트 코드를 포함하거나 외부 JS 파일을 불러올 때 사용합니다.",
+                usage: `<script>
+  console.log('실행');
+<\/script>`,
+                attr: ["src: 외부 스크립트 파일 경로"]
+            },
+            "style": {
+                title: "<style> (CSS 스타일)",
+                desc: "HTML 문서의 스타일 정보를 정의합니다. 주로 <head> 태그 안에 위치합니다.",
+                usage: `<style>
+  body { color: red; }
+</style>`,
+                attr: []
+            },
+            "function": {
+                title: "Function (함수)",
+                desc: "특정 작업을 수행하도록 설계된 코드 블록입니다. 정의해두고 필요할 때마다 호출하여 재사용할 수 있습니다.",
+                usage: `function 함수명(매개변수) {
+  // 실행할 코드
+}`,
+                attr: ["return: 값을 반환하고 함수 종료"]
+            },
+            "variable": {
+                title: "변수 선언 (var, let, const)",
+                desc: "데이터를 저장하는 공간입니다. ES6부터는 var보다 let(변경 가능)과 const(변경 불가능) 사용을 권장합니다.",
+                usage: `let name = "John"; // 변경 가능
+const pi = 3.14; // 변경 불가`,
+                attr: []
+            },
+            "return": {
+                title: "return (반환)",
+                desc: "함수의 실행을 종료하고, 주어진 값을 함수 호출 지점으로 반환합니다.",
+                usage: `return 결과값;`,
+                attr: []
+            },
+            "alert": {
+                title: "alert() (알림창)",
+                desc: "사용자에게 메시지를 보여주는 경고창을 띄웁니다. 확인을 누를 때까지 스크립트 실행이 일시 중지됩니다.",
+                usage: `alert("메시지 내용");`,
+                attr: []
+            },
+            "console.log": {
+                title: "console.log()",
+                desc: "웹 브라우저의 콘솔 탭에 메시지를 출력합니다. 디버깅(오류 확인) 용도로 가장 많이 사용됩니다.",
+                usage: `console.log("변수값:", value);`,
+                attr: []
+            },
+            "if": {
+                title: "if / else (조건문)",
+                desc: "조건의 참/거짓 여부에 따라 다른 코드를 실행하게 합니다.",
+                usage: `if (조건) {
+  // 참일 때
+} else {
+  // 거짓일 때
+}`,
+                attr: []
+            },
+            "for": {
+                title: "for (반복문)",
+                desc: "특정 코드를 정해진 횟수만큼 반복해서 실행합니다.",
+                usage: `for (let i = 0; i < 10; i++) {
+  console.log(i);
+}`,
+                attr: []
+            }
+        };
+
+
+        function updateExplanation(type, keyword, codeSnippet) {
+            const expl = document.getElementById('explanationContent');
+            
+            // 1. Identify Key for Database
+            let key = "default";
+            // Set dynamic data to null initially
+            let dynamicData = null;
+            
+            const lowerCode = codeSnippet.toLowerCase();
+
+            // Simple parser to find matching syntax key
+            if (type === "HTML Tag" || type === "HTML Element") {
+                // Extract tag name like "div", "h1", "button"
+                const match = lowerCode.match(/<([a-z0-9]+)/);
+                if (match && syntaxData[match[1]]) {
+                    key = match[1];
+                } else if (match) {
+                     // Generic HTML Tag fallback if not in DB
+                     dynamicData = {
+                        title: `&lt;${match[1]}&gt; 태그`,
+                        desc: "HTML 문서의 구조나 요소를 정의하는 태그입니다.",
+                        usage: `<${match[1]}>...</${match[1]}>`,
+                        attr: []
+                     };
+                }
+            } else if (type === "JavaScript" || keyword === "Function" || type === "Script Logic") {
+                if (lowerCode.includes("function")) {
+                    key = "function";
+                    // Try to extract function name for better explanation
+                    // Regex looks for "function" followed by space(s) and then a name
+                    const funcNameMatch = codeSnippet.match(/function\s+([a-zA-Z0-9_$]+)/);
+                    if (funcNameMatch) {
+                        dynamicData = {
+                            title: `Function: ${funcNameMatch[1]}()`,
+                            desc: `사용자가 정의한 함수 <strong>${funcNameMatch[1]}</strong>입니다. 이 코드 블록은 <code>${funcNameMatch[1]}()</code> 형태로 호출하여 실행할 수 있습니다.`,
+                            usage: `// 함수 정의\n${funcNameMatch[0]}(...) {\n  ...\n}\n\n// 사용법\n${funcNameMatch[1]}();`,
+                            attr: ["함수 정의(Definition)", "재사용 가능한 코드 블록"]
+                        };
+                    }
+                }
+                else if (lowerCode.includes("alert")) key = "alert";
+                else if (lowerCode.includes("console.log")) key = "console.log";
+                else if (lowerCode.includes("if")) key = "if";
+                else if (lowerCode.includes("for")) key = "for";
+                else if (lowerCode.includes("return")) key = "return";
+                else if (lowerCode.includes("var") || lowerCode.includes("let") || lowerCode.includes("const")) key = "variable";
+                else {
+                    // Fallback for JS code that doesn't match specific keys
+                    dynamicData = {
+                        title: "JavaScript Code",
+                        desc: "자바스크립트 실행 코드입니다. 동작이나 로직을 처리합니다.",
+                        usage: codeSnippet.substring(0, 50) + "...",
+                        attr: []
+                    };
+                }
+            } else if (type === "CSS") {
+                // CSS detection could be expanded
+                if(lowerCode.includes("style")) key = "style";
+                else {
+                     dynamicData = {
+                        title: "CSS Style",
+                        desc: "요소의 디자인(색상, 크기 등)을 정의하는 스타일 코드입니다.",
+                        usage: codeSnippet.substring(0, 50) + "...",
+                        attr: []
+                     };
+                }
+            } else if (keyword === "HTML Element") {
+                // Fallback for generic HTML
+                if(lowerCode.includes("<style")) key = "style";
+                else if(lowerCode.includes("<script")) key = "script";
+            }
+
+            // Prepare Data: Use dynamic data if available, otherwise look up static DB, otherwise default
+            const data = dynamicData || syntaxData[key] || syntaxData["default"];
+
+            // 2. Render HTML
+            let attrHtml = "";
+            if (data.attr && data.attr.length > 0) {
+                attrHtml = `<div class="mt-3">
+                    <p class="font-bold text-xs text-gray-500 mb-1">주요 속성/특징:</p>
+                    <ul class="list-disc list-inside text-xs text-gray-700 space-y-1 bg-gray-100 p-2 rounded">
+                        ${data.attr.map(a => `<li>${a}</li>`).join('')}
+                    </ul>
+                </div>`;
+            }
+
+            expl.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-blue-600 flex items-center gap-2">
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded border border-blue-200">${type}</span>
+                            ${data.title}
+                        </h3>
+                        <p class="text-sm text-gray-700 mt-2 leading-relaxed border-l-4 border-blue-400 pl-3 bg-blue-50 py-2 pr-2 rounded-r">
+                            ${data.desc}
+                        </p>
+                    </div>
+
+                    <div>
+                        <p class="font-bold text-xs text-gray-500 mb-1">사용법 (Syntax):</p>
+                        <pre class="bg-[#282c34] text-gray-300 p-3 rounded text-xs font-mono overflow-x-auto border border-gray-600"><code class="language-html">${escapeHtml(data.usage)}</code></pre>
+                    </div>
+                    
+                    ${attrHtml}
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+
+        // --- 4. Search Functionality ---
+
+        let searchCursor = null;
+
+        function performSearch(next) {
+            const query = document.getElementById('searchInput').value;
+            if (!query) return;
+
+            if (!searchCursor || searchCursor.query !== query) {
+                // New search
+                searchCursor = editor1.getSearchCursor(query);
+                searchCursor.query = query;
+            }
+
+            let found;
+            if (next) {
+                found = searchCursor.findNext();
+                if (!found) { // Wrap around
+                    searchCursor = editor1.getSearchCursor(query);
+                    searchCursor.query = query;
+                    found = searchCursor.findNext();
+                }
             } else {
-                textarea.removeEventListener('input', handleTextareaInput);
-                enableCodeMirror();
-                modeLabel.innerText = "CodeMirror";
+                found = searchCursor.findPrevious();
+                if (!found) { // Wrap around backwards
+                    searchCursor = editor1.getSearchCursor(query, {line: editor1.lineCount(), ch: 0});
+                    searchCursor.query = query;
+                    found = searchCursor.findPrevious();
+                }
+            }
+
+            if (found) {
+                editor1.setSelection(searchCursor.from(), searchCursor.to());
+                editor1.scrollIntoView(searchCursor.from(), 200);
+                editor1.focus(); // 검색된 항목으로 포커스 이동
+                
+                // Count matches logic (simple version)
+                const text = editor1.getValue();
+                const regex = new RegExp(query, 'gi'); // Case insensitive
+                const matches = (text.match(regex) || []).length;
+                document.getElementById('searchCount').textContent = `1/${matches}`; // Simplified counter
+            } else {
+                showToast("검색 결과가 없습니다.");
             }
         }
 
-        function enableCodeMirror() {
-            cmEditor = CodeMirror.fromTextArea(textarea, {
-                mode: "htmlmixed",
-                theme: "dracula",
-                lineNumbers: true,
-                lineWrapping: true,
-            });
-            cmEditor.on('change', () => {
-                const currentCode = cmEditor.getValue();
-                textarea.value = currentCode; 
-                saveAndPreview(currentCode);
-            });
+
+        // --- 5. Button Actions (Clear, Save, Format, Pane 3 Actions) ---
+
+        function clearEditor() {
+            if(confirm("모든 코드를 삭제하시겠습니까?")) {
+                editor1.setValue("");
+                localStorage.removeItem('htmlStudioCode');
+                showToast("초기화되었습니다.");
+            }
         }
 
-        function handleTextareaInput() {
-            saveAndPreview(textarea.value);
-        }
-
-        function saveAndPreview(code) {
-            preview.srcdoc = code;
-            localStorage.setItem('myHtmlCode', code);
-        }
-        
-        function updatePreview(code) {
-            preview.srcdoc = code;
-        }
-
-        function saveCode() {
-            const code = cmEditor ? cmEditor.getValue() : textarea.value;
-            const blob = new Blob([code], { type: "text/html" });
+        function saveFile() {
+            const code = editor1.getValue();
+            const now = new Date();
+            const filename = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.html`;
+            
+            const blob = new Blob([code], {type: "text/html"});
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = "index.html";
-            document.body.appendChild(link);
+            link.download = filename;
             link.click();
-            document.body.removeChild(link);
+            
+            showToast(`저장완료: download 폴더 (${filename})`);
         }
 
-        // 리사이즈 로직
-        const resizer = document.getElementById('resizer');
-        const leftPanel = document.getElementById('leftPanel');
-        const container = document.querySelector('.container');
-        let isResizing = false;
-
-        resizer.addEventListener('mousedown', () => {
-            isResizing = true;
-            preview.classList.add('pointer-events-none');
-            document.body.style.cursor = 'col-resize';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-            if (window.innerWidth > 768) {
-                const newPercent = (e.clientX / container.offsetWidth) * 100;
-                if (newPercent > 10 && newPercent < 90) leftPanel.style.width = newPercent + '%';
+        function formatCode() {
+            try {
+                const currentCode = editor1.getValue();
+                const formatted = prettier.format(currentCode, {
+                    parser: "html",
+                    plugins: prettierPlugins,
+                    tabWidth: 4
+                });
+                editor1.setValue(formatted);
+                showToast("코드가 정렬되었습니다 (Prettier).");
+            } catch (e) {
+                showToast("코드 정렬 실패: 문법 오류를 확인하세요.");
+                console.error(e);
             }
-        });
+        }
 
-        document.addEventListener('mouseup', () => {
-            isResizing = false;
-            preview.classList.remove('pointer-events-none');
-            document.body.style.cursor = 'default';
+        // Pane 3: Test Button (작동)
+        function testBlock() {
+            if (!currentBlockRange) return;
+            
+            const pane3Content = editor3.getValue();
+            const fullCode = editor1.getValue();
+            
+            // Construct temp code by replacing the range in memory
+            const doc = new CodeMirror.Doc(fullCode, "htmlmixed");
+            doc.replaceRange(pane3Content, currentBlockRange.from, currentBlockRange.to);
+            const tempCode = doc.getValue();
+            
+            updatePreview(tempCode);
+            isTempPreview = true;
+            showToast("미리보기에 임시 반영되었습니다. (다른 창 클릭 시 복구)");
+        }
+
+        // Pane 3: Apply Button (적용)
+        function applyBlock() {
+            if (!currentBlockRange) return;
+
+            if (confirm("3번창의 내용을 원본 코드에 적용하시겠습니까?")) {
+                const newContent = editor3.getValue();
+                editor1.replaceRange(newContent, currentBlockRange.from, currentBlockRange.to);
+                // Update selection to match new length
+                // (Optional: Recalculate range if we wanted to keep selection)
+                showToast("적용되었습니다.");
+            }
+        }
+
+        // --- Utils ---
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('translate-y-20');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20');
+            }, 3000);
+        }
+
+        // Global Click Listener for Reverting Preview
+        document.addEventListener('mousedown', (e) => {
+            if (isTempPreview) {
+                const pane3 = document.getElementById('pane3');
+                // 3번창(버튼 포함) 외부를 클릭했을 때만 복구
+                if (pane3 && !pane3.contains(e.target)) {
+                    updatePreview(); // 인자 없이 호출하여 editor1의 내용으로 원복
+                    showToast("미리보기가 원본으로 복구되었습니다.");
+                }
+            }
         });
     </script>
 </body>
